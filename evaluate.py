@@ -2,41 +2,65 @@ import torch
 import torch.nn.functional as F
 from tqdm import tqdm
 
-from utils.dice_score import multiclass_dice_coeff, dice_coeff
+from utils.dice_score import compute_pre_rec_miou, dice_coeff, multiclass_dice_coeff
 
 
 def evaluate(net, dataloader, device):
     net.eval()
     num_val_batches = len(dataloader)
-    dice_score = 0
+    precision = 0
+    recall = 0
+    miou = 0
 
     # iterate over the validation set
-    for batch in tqdm(dataloader, total=num_val_batches, desc='Validation round', unit='batch', leave=False):
-        image, mask_true = batch['image'], batch['mask']
+    for batch in tqdm(
+        dataloader,
+        total=num_val_batches,
+        desc="Validation round",
+        unit="batch",
+        leave=False,
+    ):
+        image, true_masks = batch["image"], batch["mask"]
         # move images and labels to correct device and type
         image = image.to(device=device, dtype=torch.float32)
-        mask_true = mask_true.to(device=device, dtype=torch.long)
-        mask_true = F.one_hot(mask_true, net.n_classes).permute(0, 3, 1, 2).float()
+        true_masks = true_masks.to(device=device)
+        ignore_masks = (
+            F.one_hot(true_masks).permute(0, 3, 1, 2)[:, 4, :, :].unsqueeze(dim=1)
+        )
+        true_masks = F.one_hot(true_masks).permute(0, 3, 1, 2)[:, 0, :, :]
+        true_masks = true_masks.unsqueeze(dim=1)
 
         with torch.no_grad():
             # predict the mask
-            mask_pred = net(image)
+            masks_pred = net(image)
+            masks_pred = (
+                torch.softmax(masks_pred, dim=1)
+                if net.n_classes > 1
+                else torch.sigmoid(masks_pred)
+            )
 
-            # convert to one-hot format
-            if net.n_classes == 1:
-                mask_pred = (F.sigmoid(mask_pred) > 0.5).float()
-                # compute the Dice score
-                dice_score += dice_coeff(mask_pred, mask_true, reduce_batch_first=False)
-            else:
-                mask_pred = F.one_hot(mask_pred.argmax(dim=1), net.n_classes).permute(0, 3, 1, 2).float()
-                # compute the Dice score, ignoring background
-                dice_score += multiclass_dice_coeff(mask_pred[:, 1:, ...], mask_true[:, 1:, ...], reduce_batch_first=False)
+            ignore_area = True
+            if ignore_area:
+                masks_pred = torch.where(
+                    ignore_masks.byte(), torch.zeros_like(masks_pred), masks_pred
+                )
 
-           
+            # compute the Precision and the Recall
+            pre, rec, iou = compute_pre_rec_miou(
+                masks_pred, true_masks, multi_class=True
+            )
+            precision += pre
+            recall += rec
+            miou += iou
 
     net.train()
 
     # Fixes a potential division by zero error
     if num_val_batches == 0:
-        return dice_score
-    return dice_score / num_val_batches
+        return precision, recall, miou
+    else:
+        return (
+            precision / num_val_batches,
+            recall / num_val_batches,
+            miou / num_val_batches,
+        )
