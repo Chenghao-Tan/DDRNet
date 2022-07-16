@@ -257,9 +257,11 @@ class DualResNet(nn.Module):
 
         highres_planes = planes * 2
         self.augment = augment
+        self.n_channels = num_channels
+        self.n_classes = num_classes
 
         self.conv1 = nn.Sequential(
-            nn.Conv2d(n_channels, planes, kernel_size=3, stride=2, padding=1),
+            nn.Conv2d(self.n_channels, planes, kernel_size=3, stride=2, padding=1),
             BatchNorm2d(planes, momentum=bn_mom),
             nn.ReLU(inplace=True),
             nn.Conv2d(planes, planes, kernel_size=3, stride=2, padding=1),
@@ -327,9 +329,11 @@ class DualResNet(nn.Module):
         self.spp = DAPPM(planes * 16, spp_planes, planes * 4)
 
         if self.augment:
-            self.seghead_extra = segmenthead(highres_planes, head_planes, num_classes)
+            self.seghead_extra = segmenthead(
+                highres_planes, head_planes, self.n_classes
+            )
 
-        self.final_layer = segmenthead(planes * 4, head_planes, num_classes)
+        self.final_layer = segmenthead(planes * 4, head_planes, self.n_classes)
 
         for m in self.modules():
             if isinstance(m, nn.Conv2d):
