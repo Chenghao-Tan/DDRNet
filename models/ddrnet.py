@@ -479,7 +479,7 @@ class DDRNet23s(nn.Module):
 
 
 def DDRNet(n_channels=3, n_classes=1, pretrained=None):
-    model = DDRNet(n_channels=n_channels, n_classes=n_classes)
+    model = DDRNet23s(n_channels=n_channels, n_classes=n_classes)
     if pretrained:
         checkpoint = torch.load(pretrained, map_location="cpu")
         new_state_dict = OrderedDict()
