@@ -435,7 +435,7 @@ def DDRNet23s(n_channels=3, n_classes=1, pretrained=None):
     if pretrained:
         checkpoint = torch.load(pretrained, map_location="cpu")
         new_state_dict = OrderedDict()
-        for k, v in checkpoint["state_dict"].items():
+        for k, v in checkpoint.items():
             name = k[7:]
             new_state_dict[name] = v
         model.load_state_dict(new_state_dict, strict=False)
