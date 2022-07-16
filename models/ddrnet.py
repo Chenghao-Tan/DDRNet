@@ -453,6 +453,7 @@ class post(torch.nn.Module):
 class DDRNet23s(nn.Module):
     def __init__(self, n_channels, n_classes, augment=False, process=False):
         super(DDRNet23s, self).__init__()
+        self.n_channels = n_channels
         self.n_classes = n_classes
 
         self.model = DualResNet(
