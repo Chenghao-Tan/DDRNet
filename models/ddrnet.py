@@ -215,7 +215,7 @@ class DAPPM(nn.Module):
 
 
 class segmenthead(nn.Module):
-    def __init__(self, inplanes, interplanes, outplanes, scale_factor=None):
+    def __init__(self, inplanes, interplanes, outplanes, scale_factor=8):
         super(segmenthead, self).__init__()
         self.bn1 = BatchNorm2d(inplanes, momentum=bn_mom)
         self.conv1 = nn.Conv2d(
