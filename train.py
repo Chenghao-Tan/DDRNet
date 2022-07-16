@@ -47,8 +47,8 @@ def train_net(
 
     # 3. Create data loaders
     loader_args = dict(batch_size=batch_size, num_workers=4, pin_memory=True)
-    train_loader = DataLoader(train_set, shuffle=True, **loader_args)
-    val_loader = DataLoader(val_set, shuffle=False, **loader_args)
+    train_loader = DataLoader(train_set, shuffle=True, drop_last=True, **loader_args)
+    val_loader = DataLoader(val_set, shuffle=False, drop_last=False, **loader_args)
 
     # (Initialize logging)
     experiment = wandb.init(project="GSoC", resume="allow", anonymous="must")
@@ -216,6 +216,7 @@ def train_net(
 
                         if save_onnx:
                             net.extra_process(True)
+                            net.eval()
                             Path(dir_checkpoint).mkdir(parents=True, exist_ok=True)
                             dummy_input = (
                                 next(iter(train_loader))["image"][0, :, :, :]
@@ -228,6 +229,7 @@ def train_net(
                                 f"{dir_checkpoint}BEST_mIoU{best}.onnx",
                                 opset_version=11,
                             )
+                            net.train()
                             net.extra_process(False)
                             logging.info(f"Best(mIoU{best}) onnx saved!")
 
@@ -240,6 +242,7 @@ def train_net(
 
             if save_onnx:  # for following conversion
                 net.extra_process(True)
+                net.eval()
                 Path(dir_checkpoint).mkdir(parents=True, exist_ok=True)
                 dummy_input = (
                     next(iter(train_loader))["image"][0, :, :, :]
@@ -252,6 +255,7 @@ def train_net(
                     f"{dir_checkpoint}ONNX_epoch{epoch + 1}.onnx",
                     opset_version=11,
                 )
+                net.train()
                 net.extra_process(False)
                 logging.info(f"ONNX model {epoch + 1} saved!")
 
