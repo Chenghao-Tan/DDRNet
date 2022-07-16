@@ -13,7 +13,7 @@ from tqdm import tqdm
 
 import wandb
 from evaluate import evaluate
-from models import DDRNet23s, UNet
+from models import DDRNet, UNet
 from utils.data_loading import BasicDataset
 from utils.dice_score import dice_loss
 from utils.unified_focal_loss import AsymmetricUnifiedFocalLoss
@@ -320,7 +320,7 @@ if __name__ == "__main__":
 
     # Change here to adapt to your data
     # net = UNet(n_channels=3, n_classes=1, bilinear=args.bilinear)
-    net = DDRNet23s(n_channels=3, n_classes=1, pretrained="./DDRNet23s_imagenet.pth")
+    net = DDRNet(n_channels=3, n_classes=1, pretrained="./DDRNet23s_imagenet.pth")
 
     logging.info(
         f"Network:\n"

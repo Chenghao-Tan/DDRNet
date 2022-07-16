@@ -1,2 +1,2 @@
-from .ddrnet import DDRNet23s
+from .ddrnet import DDRNet
 from .unet import UNet

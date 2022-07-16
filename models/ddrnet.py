@@ -421,17 +421,65 @@ class DualResNet(nn.Module):
             return x_
 
 
-def DDRNet23s(n_channels=3, n_classes=1, pretrained=None):
-    model = DualResNet(
-        BasicBlock,
-        [2, 2, 2, 2],
-        num_channels=n_channels,
-        num_classes=n_classes,
-        planes=32,
-        spp_planes=128,
-        head_planes=64,
-        augment=False,
-    )
+class pre(torch.nn.Module):
+    def __init__(self):
+        super(pre, self).__init__()
+
+    def forward(self, x):
+        if not self.training:
+            with torch.no_grad():
+                return (x - x.min()) / (x.max() - x.min())
+        else:
+            return x
+
+
+class post(torch.nn.Module):
+    def __init__(self, n_classes):
+        super(post, self).__init__()
+        self.n_classes = n_classes
+
+    def forward(self, x):
+        if not self.training:
+            with torch.no_grad():
+                if self.n_classes == 1:
+                    out = torch.sigmoid(x)
+                else:
+                    out = torch.nn.functional.softmax(x, dim=1)
+                return out
+        else:
+            return x
+
+
+class DDRNet23s(nn.Module):
+    def __init__(self, n_channels, n_classes, augment=False, process=False):
+        super(DDRNet23s, self).__init__()
+        self.n_classes = n_classes
+
+        self.model = DualResNet(
+            BasicBlock,
+            [2, 2, 2, 2],
+            num_channels=n_channels,
+            num_classes=n_classes,
+            planes=32,
+            spp_planes=128,
+            head_planes=64,
+            augment=augment,
+        )
+        self.pre_process = pre() if process else torch.nn.Identity()
+        self.post_process = post(self.n_classes) if process else torch.nn.Identity()
+
+    def forward(self, x):
+        x = self.pre_process(x)
+        x = self.model(x)
+        return self.post_process(x)
+
+    def extra_process(self, enable):
+        self.pre_process = pre() if enable else torch.nn.Identity()
+        self.post_process = post(self.n_classes) if enable else torch.nn.Identity()
+
+
+def DDRNet(n_channels=3, n_classes=1, pretrained=None):
+    model = DDRNet(n_channels=n_channels, n_classes=n_classes)
     if pretrained:
         checkpoint = torch.load(pretrained, map_location="cpu")
         new_state_dict = OrderedDict()
