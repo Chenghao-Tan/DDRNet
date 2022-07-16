@@ -51,7 +51,7 @@ def train_net(
     val_loader = DataLoader(val_set, shuffle=False, **loader_args)
 
     # (Initialize logging)
-    experiment = wandb.init(project="U-Net", resume="allow", anonymous="must")
+    experiment = wandb.init(project="GSoC", resume="allow", anonymous="must")
     if experiment is not None:
         experiment.config.update(
             dict(

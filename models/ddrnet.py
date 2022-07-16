@@ -4,7 +4,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-BatchNorm2d = nn.SyncBatchNorm
+BatchNorm2d = nn.BatchNorm2d
 bn_mom = 0.1
 
 
