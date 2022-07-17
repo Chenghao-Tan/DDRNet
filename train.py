@@ -12,7 +12,7 @@ from torch.utils.data import DataLoader, random_split
 from tqdm import tqdm
 
 import wandb
-from evaluate import evaluate
+from FP16 import evaluate
 from models import DDRNet, UNet
 from utils.data_loading import BasicDataset
 from utils.dice_score import dice_loss
