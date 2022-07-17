@@ -307,9 +307,6 @@ def get_args():
         "--amp", action="store_true", default=False, help="Use mixed precision"
     )
     parser.add_argument(
-        "--bilinear", action="store_true", default=False, help="Use bilinear upsampling"
-    )
-    parser.add_argument(
         "--parallel", action="store_true", default=False, help="Use data parallel"
     )
     return parser.parse_args()
@@ -323,14 +320,13 @@ if __name__ == "__main__":
     logging.info(f"Using device {device}")
 
     # Change here to adapt to your data
-    # net = UNet(n_channels=3, n_classes=1, bilinear=args.bilinear)
+    # net = UNet(n_channels=3, n_classes=1)
     net = DDRNet(n_channels=3, n_classes=1, pretrained="./DDRNet23s_imagenet.pth")
 
     logging.info(
         f"Network:\n"
         f"\t{net.n_channels} input channels\n"
         f"\t{net.n_classes} output channels (classes)\n"
-        # f'\t{"Bilinear" if net.bilinear else "Transposed conv"} upscaling'
     )
 
     if args.load:
