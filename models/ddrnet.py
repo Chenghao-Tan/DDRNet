@@ -4,6 +4,8 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
+from extra import post, pre
+
 BatchNorm2d = nn.BatchNorm2d
 bn_mom = 0.1
 
@@ -442,35 +444,6 @@ class DualResNet(nn.Module):
             return [x_, x_extra]
         else:
             return x_
-
-
-class pre(torch.nn.Module):
-    def __init__(self):
-        super(pre, self).__init__()
-
-    def forward(self, x):
-        if not self.training:
-            with torch.no_grad():
-                return (x - x.min()) / (x.max() - x.min())
-        else:
-            return x
-
-
-class post(torch.nn.Module):
-    def __init__(self, n_classes):
-        super(post, self).__init__()
-        self.n_classes = n_classes
-
-    def forward(self, x):
-        if not self.training:
-            with torch.no_grad():
-                if self.n_classes == 1:
-                    out = torch.sigmoid(x)
-                else:
-                    out = torch.nn.functional.softmax(x, dim=1)
-                return out
-        else:
-            return x
 
 
 class DDRNet23s(nn.Module):

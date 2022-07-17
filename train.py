@@ -31,7 +31,6 @@ def train_net(
     learning_rate: float = 3e-4,
     val_percent: float = 0.1,
     save_checkpoint: bool = False,
-    save_onnx: bool = False,
     img_scale: float = 1.0,
     amp: bool = False,
 ):
@@ -214,50 +213,12 @@ def train_net(
                         )
                         logging.info(f"Best(mIoU{best}) pth saved!")
 
-                        if save_onnx:
-                            net.extra_process(True)
-                            net.eval()
-                            Path(dir_checkpoint).mkdir(parents=True, exist_ok=True)
-                            dummy_input = (
-                                next(iter(train_loader))["image"][0, :, :, :]
-                                .unsqueeze(dim=0)
-                                .to(device=device, dtype=torch.float32)
-                            )
-                            torch.onnx.export(
-                                net,
-                                dummy_input,
-                                f"{dir_checkpoint}BEST_mIoU{best}.onnx",
-                                opset_version=11,
-                            )
-                            net.train()
-                            net.extra_process(False)
-                            logging.info(f"Best(mIoU{best}) onnx saved!")
-
         if save_checkpoint:
             Path(dir_checkpoint).mkdir(parents=True, exist_ok=True)
             torch.save(
                 net.state_dict(), f"{dir_checkpoint}checkpoint_epoch{epoch + 1}.pth"
             )
             logging.info(f"Checkpoint {epoch + 1} saved!")
-
-            if save_onnx:  # for following conversion
-                net.extra_process(True)
-                net.eval()
-                Path(dir_checkpoint).mkdir(parents=True, exist_ok=True)
-                dummy_input = (
-                    next(iter(train_loader))["image"][0, :, :, :]
-                    .unsqueeze(dim=0)
-                    .to(device=device, dtype=torch.float32)
-                )
-                torch.onnx.export(
-                    net,
-                    dummy_input,
-                    f"{dir_checkpoint}ONNX_epoch{epoch + 1}.onnx",
-                    opset_version=11,
-                )
-                net.train()
-                net.extra_process(False)
-                logging.info(f"ONNX model {epoch + 1} saved!")
 
 
 def get_args():

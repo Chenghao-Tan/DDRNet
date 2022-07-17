@@ -60,11 +60,9 @@ class BasicDataset(Dataset):
 
     @staticmethod
     def transform(img, mask):
-        width = 640
-        height = 480
         data_transforms = A.Compose(
             [
-                A.Resize(height, width),
+                # A.Resize(height, width),
                 A.SafeRotate(limit=[5, 15], p=0.5),
                 A.Flip(),
                 A.GridDistortion(p=0.5),
