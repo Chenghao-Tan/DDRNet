@@ -1,7 +1,7 @@
 **/__pycache__
 
-checkpoints/*
-wandb/*
+/checkpoints/*
+/wandb/*
 
 INTERRUPTED.pth
 BEST.pth
