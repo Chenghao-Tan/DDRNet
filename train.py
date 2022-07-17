@@ -306,9 +306,6 @@ def get_args():
     parser.add_argument(
         "--amp", action="store_true", default=False, help="Use mixed precision"
     )
-    parser.add_argument(
-        "--parallel", action="store_true", default=False, help="Use data parallel"
-    )
     return parser.parse_args()
 
 
@@ -333,8 +330,6 @@ if __name__ == "__main__":
         net.load_state_dict(torch.load(args.load, map_location=device))
         logging.info(f"Model loaded from {args.load}")
 
-    if args.parallel:
-        torch.nn.parallel.DataParallel(net)
     net.to(device=device)
 
     try:
