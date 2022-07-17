@@ -30,9 +30,9 @@ def train_net(
     batch_size: int = 1,
     learning_rate: float = 3e-4,
     val_percent: float = 0.1,
-    save_checkpoint: bool = True,
-    save_onnx: bool = True,
-    img_scale: float = 0.5,
+    save_checkpoint: bool = False,
+    save_onnx: bool = False,
+    img_scale: float = 1.0,
     amp: bool = False,
 ):
     # 1. Create dataset
@@ -265,7 +265,7 @@ def get_args():
         description="Train the UNet on images and target masks"
     )
     parser.add_argument(
-        "--epochs", "-e", metavar="E", type=int, default=63, help="Number of epochs"
+        "--epochs", "-e", metavar="E", type=int, default=127, help="Number of epochs"
     )
     parser.add_argument(
         "--batch-size",
