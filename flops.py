@@ -5,6 +5,9 @@ from models import DDRNet, UNet
 
 with torch.cuda.device(0):
     net = DDRNet(n_channels=3, n_classes=1)
+    net.eval()
+    net.extra_process(True)
+    # net.half()
     macs, params = get_model_complexity_info(
         net, (3, 360, 640), as_strings=True, print_per_layer_stat=True, verbose=True
     )
