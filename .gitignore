@@ -1,0 +1,10 @@
+**/__pycache__
+
+checkpoints/*
+wandb/*
+
+INTERRUPTED.pth
+BEST.pth
+BEST.onnx
+input.png
+output.png
