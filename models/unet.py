@@ -1,6 +1,6 @@
 import torch
 
-from extra import post, pre
+from .extra import post, pre
 
 
 class DoubleConv(torch.nn.Module):

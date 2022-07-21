@@ -4,7 +4,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from extra import post, pre
+from .extra import post, pre
 
 BatchNorm2d = nn.BatchNorm2d
 bn_mom = 0.1
