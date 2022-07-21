@@ -64,7 +64,7 @@ class Up(torch.nn.Module):
         diffY = x2.size()[2] - x1.size()[2]
         diffX = x2.size()[3] - x1.size()[3]
 
-        x1 = torch.nn.functional.pad(
+        x1 = torch.nn.functional.pad(  # type: ignore
             x1, [diffX // 2, diffX - diffX // 2, diffY // 2, diffY - diffY // 2]
         )
         # if you have padding issues, see
@@ -102,10 +102,10 @@ class UNet(torch.nn.Module):
         self.up4 = Up(64, 32, bilinear)
         self.outc = OutConv(32, n_classes)
         self.pre_process = pre() if process else torch.nn.Identity()
-        self.post_process = post(self.n_classes) if process else torch.nn.Identity()
+        self.post_process = post() if process else torch.nn.Identity()
 
-    def forward(self, x):
-        x = self.pre_process(x)
+    def forward(self, x, depth=None):
+        x, depth = self.pre_process(x, depth)
         x1 = self.inc(x)
         x2 = self.down1(x1)
         x3 = self.down2(x2)
@@ -116,8 +116,8 @@ class UNet(torch.nn.Module):
         x = self.up3(x, x2)
         x = self.up4(x, x1)
         logits = self.outc(x)
-        return self.post_process(logits)
+        return self.post_process(logits, depth)
 
     def extra_process(self, enable):
         self.pre_process = pre() if enable else torch.nn.Identity()
-        self.post_process = post(self.n_classes) if enable else torch.nn.Identity()
+        self.post_process = post() if enable else torch.nn.Identity()

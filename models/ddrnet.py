@@ -463,16 +463,16 @@ class DDRNet23s(nn.Module):
             augment=augment,
         )
         self.pre_process = pre() if process else torch.nn.Identity()
-        self.post_process = post(self.n_classes) if process else torch.nn.Identity()
+        self.post_process = post() if process else torch.nn.Identity()
 
-    def forward(self, x):
-        x = self.pre_process(x)
-        x = self.model(x)
-        return self.post_process(x)
+    def forward(self, rgb, depth=None):
+        rgb, depth = self.pre_process(rgb, depth)
+        mask = self.model(rgb)
+        return self.post_process(mask, depth)
 
     def extra_process(self, enable):
         self.pre_process = pre() if enable else torch.nn.Identity()
-        self.post_process = post(self.n_classes) if enable else torch.nn.Identity()
+        self.post_process = post() if enable else torch.nn.Identity()
 
 
 def DDRNet(n_channels=3, n_classes=1, pretrained=None):
