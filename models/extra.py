@@ -32,7 +32,7 @@ class post(torch.nn.Module):
                 depth = torch.nn.functional.avg_pool2d(depth, kernel_size=8, stride=8)  # type: ignore
                 mask = torch.nn.functional.avg_pool2d(mask, kernel_size=8, stride=8) > 0.5  # type: ignore
                 out = torch.mul(mask, depth)
-                out, _ = torch.median(out, dim=2)
+                out = out.mean(dim=2)
             else:
                 out = mask
 
