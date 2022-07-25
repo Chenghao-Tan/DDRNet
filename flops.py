@@ -1,10 +1,10 @@
 import torch
 from ptflops import get_model_complexity_info
 
-from models import DDRNet, UNet
+from models import DDRNet23s, UNet
 
 with torch.cuda.device(0):
-    net = DDRNet(n_channels=3, n_classes=1)
+    net = DDRNet23s(n_channels=3, n_classes=1, scale_factor=8)
     net.eval()
     net.extra_process(True)
     # net.half()

@@ -273,6 +273,7 @@ class DualResNet(nn.Module):
         planes=64,
         spp_planes=128,
         head_planes=128,
+        scale_factor=8,
         augment=False,
     ):
         super(DualResNet, self).__init__()
@@ -352,10 +353,12 @@ class DualResNet(nn.Module):
 
         if self.augment:
             self.seghead_extra = segmenthead(
-                highres_planes, head_planes, self.n_classes
+                highres_planes, head_planes, self.n_classes, scale_factor=scale_factor
             )
 
-        self.final_layer = segmenthead(planes * 4, head_planes, self.n_classes)
+        self.final_layer = segmenthead(
+            planes * 4, head_planes, self.n_classes, scale_factor=scale_factor
+        )
 
         for m in self.modules():
             if isinstance(m, nn.Conv2d):
@@ -447,7 +450,9 @@ class DualResNet(nn.Module):
 
 
 class DDRNet23s(nn.Module):
-    def __init__(self, n_channels, n_classes, augment=False, process=False):
+    def __init__(
+        self, n_channels, n_classes, scale_factor=8, augment=False, process=False
+    ):
         super(DDRNet23s, self).__init__()
         self.n_channels = n_channels
         self.n_classes = n_classes
@@ -460,6 +465,7 @@ class DDRNet23s(nn.Module):
             planes=32,
             spp_planes=128,
             head_planes=64,
+            scale_factor=scale_factor,
             augment=augment,
         )
         self.pre_process = pre() if process else torch.nn.Identity()
@@ -475,8 +481,10 @@ class DDRNet23s(nn.Module):
         self.post_process = post() if enable else torch.nn.Identity()
 
 
-def DDRNet(n_channels=3, n_classes=1, pretrained=None):
-    model = DDRNet23s(n_channels=n_channels, n_classes=n_classes)
+def DDRNet(n_channels=3, n_classes=1, scale_factor=8, pretrained=None):
+    model = DDRNet23s(
+        n_channels=n_channels, n_classes=n_classes, scale_factor=scale_factor
+    )
     if pretrained:
         checkpoint = torch.load(pretrained, map_location="cpu")
         new_state_dict = OrderedDict()

@@ -1,6 +1,6 @@
 import torch
 
-from models import DDRNet, UNet
+from models import DDRNet23s, UNet
 
 
 def get_parameter_number(model):
@@ -10,7 +10,7 @@ def get_parameter_number(model):
 
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-net = DDRNet(n_channels=3, n_classes=1)
+net = DDRNet23s(n_channels=3, n_classes=1, scale_factor=8)
 
 net.load_state_dict(torch.load("./BEST.pth"))
 net.eval()
