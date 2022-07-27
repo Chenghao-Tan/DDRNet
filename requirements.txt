@@ -6,4 +6,4 @@ tqdm
 wandb
 onnxruntime
 albumentations
-ptflops
+thop
