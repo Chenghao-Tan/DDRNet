@@ -37,7 +37,7 @@ def z2xy_coefficient(
 
     # Projection coefficient
     x_coefficient = ((grid_cx - cx) / fx).flatten()
-    y_coefficient = ((grid_cy - cy) / fy).flatten()
+    y_coefficient = ((cy - grid_cy) / fy).flatten()
 
     return torch.tensor(x_coefficient), torch.tensor(y_coefficient)
 
@@ -70,7 +70,7 @@ def z2xy_coefficient_fov(grid_height, grid_width, grid_num_h, grid_num_w, hfov=6
 
     # Projection coefficient
     x_coefficient = ((grid_cx - cx) * fx_r).flatten()
-    y_coefficient = ((grid_cy - cy) * fy_r).flatten()
+    y_coefficient = ((cy - grid_cy) * fy_r).flatten()
 
     return torch.tensor(x_coefficient), torch.tensor(y_coefficient)
 
