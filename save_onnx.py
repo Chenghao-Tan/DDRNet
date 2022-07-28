@@ -16,5 +16,6 @@ torch.onnx.export(
     "./BEST.onnx",
     input_names=["rgb", "depth"],
     output_names=["out"],
+    # output_names=["out", "debug"],  # For debug
     opset_version=11,
 )

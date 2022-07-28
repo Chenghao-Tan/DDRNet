@@ -15,8 +15,6 @@ def z2xy_coefficient(
         ]
     ),  # TODO
 ):
-    # WARNING: Use intrinsic matrix only (distortion is not considered)
-
     # Center of each grid
     grid_cx = np.linspace(
         (grid_width - 1) / 2,
@@ -124,17 +122,17 @@ class post(torch.nn.Module):
                 # depth[depth < 0.35] = 0  # TODO
                 # depth[depth > 35] = 0  # TODO
                 filtered = torch.mul(mask, depth)
-                filtered = (
+                grids = (
                     filtered.reshape(grid_num_h, grid_height, grid_num_w, grid_width)
                     .permute(0, 2, 1, 3)
                     .reshape(grid_num_h * grid_num_w, grid_height * grid_width)
                 )
                 non_zero_num = torch.where(
-                    filtered > 0, torch.ones_like(filtered), torch.zeros_like(filtered)
+                    grids > 0, torch.ones_like(grids), torch.zeros_like(grids)
                 ).sum(dim=1)
                 non_zero_num[non_zero_num == 0] = -1  # In case of getting nan
                 z = (
-                    filtered.sum(dim=1) / non_zero_num
+                    grids.sum(dim=1) / non_zero_num
                 )  # To get the mean value of the nonzeros
 
                 label = torch.where(
@@ -150,8 +148,7 @@ class post(torch.nn.Module):
                 y = z.mul(z2y.type_as(z))
 
                 out = torch.stack((label, x, y, z), dim=1)
-                out = out.flatten()
+                # return out.flatten(), filtered  # For debug
+                return out.flatten()
             else:
-                out = mask
-
-        return out
+                return mask
