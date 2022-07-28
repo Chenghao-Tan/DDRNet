@@ -142,7 +142,7 @@ class post(torch.nn.Module):
                 )  # 0:background 1:obstacle
 
                 z2x, z2y = z2xy_coefficient(
-                    grid_height, grid_width, grid_num_h, grid_num_w,
+                    grid_height, grid_width, int(grid_num_h), int(grid_num_w),
                 )  # TODO
                 x = z.mul(z2x.type_as(z))
                 y = z.mul(z2y.type_as(z))
