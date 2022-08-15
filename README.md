@@ -1,11 +1,15 @@
 # DDRNet for Boat Obstacle Avoidance
 **This project is modified from [U-Net: Semantic segmentation with PyTorch](https://github.com/milesial/Pytorch-UNet)**
 
+**Models in this branch output label and depth only!!! Check [OAK-D-IoT branch](https://github.com/Agent-Birkhoff/DDRNet/tree/OAK-D-IoT) for the previous end-to-end models which output label and 3D distance.**
+
 
 ## Overview
 This is a custom training framework supporting **DDRNet and UNet(deprecated).**
 
-The built-in models are modified and **use MaSTr1325 format dataset**. See **Data**. You can make the trained model end-to-end by opening the extra process option. See **Export ONNX**.
+The built-in models are modified and **use MaSTr1325 format dataset**. See **Data**.
+
+You can export onnx file for [Luxonis blobconverter](http://blobconverter.luxonis.com/). See **Export ONNX**. (If you want to use this model in [Boat-Obstacle-Avoidance](https://github.com/Agent-Birkhoff/Boat-Obstacle-Avoidance), make sure the extra process option is enabled)
 
 - Number of parameters: **5.7M**
 - Computational complexity: **4.1G** (automatically generated value, may be extremely inaccurate)
@@ -54,14 +58,14 @@ You can run [save_onnx.py](https://github.com/Agent-Birkhoff/DDRNet/blob/master/
 
 See **# For debug** tag in both [save_onnx.py](https://github.com/Agent-Birkhoff/DDRNet/blob/master/save_onnx.py) and [models/extra.py](https://github.com/Agent-Birkhoff/DDRNet/blob/master/models/extra.py) for how to export the debug version.
 
-With **net.extra_process(True)**, the exported onnx model is end-to-end.
+With **net.extra_process(True)**, the exported model can be used in [Boat-Obstacle-Avoidance](https://github.com/Agent-Birkhoff/Boat-Obstacle-Avoidance).
 - Model's IO:
   - input->Image ("rgb"), Depth map ("depth")
   - output->Flattened grids info ("out")
   - debug output->Flattened grids info ("out"), Filtered depth map ("debug")
-- Flattened grids info: (label, x, y, z for each grid, flattened in 1D)
+- Flattened grids info: (label, z for each grid, flattened in 1D)
   - label: 0 for background, 1 for obstacles (binary classification)
-  - x,y,z: in meters
+  - z: depth, in meters
 
 
 ## Other tools
