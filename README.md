@@ -1,6 +1,8 @@
 # DDRNet for Boat Obstacle Avoidance
 **This project is modified from [U-Net: Semantic segmentation with PyTorch](https://github.com/milesial/Pytorch-UNet)**
 
+**Check [master branch](https://github.com/Agent-Birkhoff/DDRNet) if you want to train your own model for the \*LATEST\* [Boat-Obstacle-Avoidance](https://github.com/Agent-Birkhoff/Boat-Obstacle-Avoidance).**
+
 
 ## Overview
 This is a custom training framework supporting **DDRNet and UNet(deprecated).**
