@@ -54,7 +54,9 @@ Trainable parameters will be saved to the `checkpoints` folder in .pth. Only the
 
 
 ## Export ONNX (for blob converting)
-You can run [save_onnx.py](https://github.com/Agent-Birkhoff/DDRNet/blob/master/save_onnx.py) to convert `"./BEST.pth"` to `"./BEST.onnx"`. You can change the IO resolution in this file.
+You can run [save_onnx.py](https://github.com/Agent-Birkhoff/DDRNet/blob/master/save_onnx.py) to convert `"./BEST.pth"` to `"./BEST.onnx"`. You can change **IO resolution and grid settings** of the onnx model to be exported in this file.
+
+*Note: the height and width of the grid must be divisible by the resolution.*
 
 See **# For debug** tag in both [save_onnx.py](https://github.com/Agent-Birkhoff/DDRNet/blob/master/save_onnx.py) and [models/extra.py](https://github.com/Agent-Birkhoff/DDRNet/blob/master/models/extra.py) for how to export the debug version.
 
