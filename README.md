@@ -85,6 +85,8 @@ When launching a training, a link will be printed in the console. Click on it to
 ## Pretrained model
 You can load your own pth as pretrained value using `--load`. (The DDRNet model will load `DDRNet23s_imagenet.pth` first by default whether using `--load` or not)
 
+There's also a model (`mIoU_0.9042.pth`) pretrained on MaSTr1325 dataset. (mIoU 0.9042, trained & validated at 640*360)
+
 
 ## Data
 The input images and target masks should be in the `data/imgs` and `data/masks` folders respectively (note that the `imgs` and `masks` folder should not contain any sub-folder or any other files, due to the greedy data-loader). Images should be **jpg** and masks should be **png**. Images and masks should have the same name and resolution.
