@@ -1,15 +1,15 @@
 # DDRNet for Boat Obstacle Avoidance
 **This project is modified from [U-Net: Semantic segmentation with PyTorch](https://github.com/milesial/Pytorch-UNet)**
 
-**Models in this branch output label and depth only!!! Check [OAK-D-IoT branch](https://github.com/Agent-Birkhoff/DDRNet/tree/OAK-D-IoT) for the previous end-to-end models which output label and 3D distance.**
+**Models in this branch output label and depth only!!! Check [OAK-D-IoT branch](https://github.com/Chenghao-Tan/DDRNet/tree/OAK-D-IoT) for the previous end-to-end models which output label and 3D distance.**
 
 
 ## Overview
-This is a custom training framework supporting **DDRNet and UNet(deprecated).**
+This is a custom training framework supporting **DDRNet and UNet(deprecated).** It is used to train the water segmentation AI model required by [Boat-Obstacle-Avoidance](https://github.com/Chenghao-Tan/Boat-Obstacle-Avoidance). (Prepare your own dataset, train a new model, export the model in ONNX format, then use [Luxonis blobconverter](http://blobconverter.luxonis.com/) to convert the ONNX to blob, which is required by the scripts.)
 
 The built-in models are modified and **use MaSTr1325 format dataset**. See **Data**.
 
-You can export onnx file for [Luxonis blobconverter](http://blobconverter.luxonis.com/). See **Export ONNX**. (If you want to use this model in [Boat-Obstacle-Avoidance](https://github.com/Agent-Birkhoff/Boat-Obstacle-Avoidance), make sure the extra process option is enabled)
+You can export onnx file for [Luxonis blobconverter](http://blobconverter.luxonis.com/). See **Export ONNX**.
 
 - Number of parameters: **5.7M**
 - Computational complexity: **4.1G** (automatically generated value, may be extremely inaccurate)
@@ -47,20 +47,20 @@ optional arguments:
 
 ### Tips:
 - Recommend to set `--epochs` to 1,3,7,15,31,63...
-- You can use `--scale` to scale the image while keeping the aspect ratio, but it's recommended to modify [data_loading.py](https://github.com/Agent-Birkhoff/DDRNet/blob/master/utils/data_loading.py) directly. (Uncomment **A.Resize(height, width)**).
+- You can use `--scale` to scale the image while keeping the aspect ratio, but it's recommended to modify [data_loading.py](https://github.com/Chenghao-Tan/DDRNet/blob/master/utils/data_loading.py) directly. (Uncomment **A.Resize(height, width)**).
 - `--amp` is not recommended as it may drastically reduce precision.
 
 Trainable parameters will be saved to the `checkpoints` folder in .pth. Only the best results will be saved by default. However, because the mIoU values appended to the filename are usually different, there could be more than one file.
 
 
 ## Export ONNX (for blob converting)
-You can run [save_onnx.py](https://github.com/Agent-Birkhoff/DDRNet/blob/master/save_onnx.py) to convert `"./BEST.pth"` to `"./BEST.onnx"`. You can change **IO resolution and grid settings** of the onnx model to be exported in this file.
+You can run [save_onnx.py](https://github.com/Chenghao-Tan/DDRNet/blob/master/save_onnx.py) to convert `"./BEST.pth"` to `"./BEST.onnx"`. You can change **IO resolution and grid settings** of the onnx model to be exported in this file.
 
 *Note: the height and width of the grid must be divisible by the resolution.*
 
-See **# For debug** tag in both [save_onnx.py](https://github.com/Agent-Birkhoff/DDRNet/blob/master/save_onnx.py) and [models/extra.py](https://github.com/Agent-Birkhoff/DDRNet/blob/master/models/extra.py) for how to export the debug version.
+See **# For debug** tag in both [save_onnx.py](https://github.com/Chenghao-Tan/DDRNet/blob/master/save_onnx.py) and [models/extra.py](https://github.com/Chenghao-Tan/DDRNet/blob/master/models/extra.py) for how to export the debug version.
 
-With **net.extra_process(True)**, the exported model can be used in [Boat-Obstacle-Avoidance](https://github.com/Agent-Birkhoff/Boat-Obstacle-Avoidance).
+With **net.extra_process(True)**, the exported model can be used in [Boat-Obstacle-Avoidance](https://github.com/Chenghao-Tan/Boat-Obstacle-Avoidance).
 - Model's IO:
   - input->Image ("rgb"), Depth map ("depth")
   - output->Flattened grids info ("out")
@@ -71,8 +71,8 @@ With **net.extra_process(True)**, the exported model can be used in [Boat-Obstac
 
 
 ## Other tools
-- [test_onnx.py](https://github.com/Agent-Birkhoff/DDRNet/blob/master/test_onnx.py) is for testing the exported onnx using onnxruntime. The default image input is `"./input.png"` and the depth map input is simulated with ones.
-- [flops.py](https://github.com/Agent-Birkhoff/DDRNet/blob/master/flops.py) is for getting the model's number of parameters and estimated computational complexity.
+- [test_onnx.py](https://github.com/Chenghao-Tan/DDRNet/blob/master/test_onnx.py) is for testing the exported onnx using onnxruntime. The default image input is `"./input.png"` and the depth map input is simulated with ones.
+- [flops.py](https://github.com/Chenghao-Tan/DDRNet/blob/master/flops.py) is for getting the model's number of parameters and estimated computational complexity.
 
 
 ## Weights & Biases
