@@ -20,8 +20,9 @@ class pre(torch.nn.Module):
 class post(torch.nn.Module):
     def __init__(self):
         super(post, self).__init__()
-        self.grid_height = 36
-        self.grid_width = 64
+        self.confidence = 0.9
+        self.grid_height = 72
+        self.grid_width = 128
         self.threshold = 0.2
 
     def forward(self, mask, depth):
@@ -42,7 +43,8 @@ class post(torch.nn.Module):
                     assert self.threshold >= 0 and self.threshold <= 1
                     self.threshold = self.threshold * self.grid_height * self.grid_width
 
-                mask = mask > 0.5
+                assert self.confidence >= 0 and self.confidence <= 1
+                mask = mask > self.confidence
                 depth /= 1000  # mm->m
 
                 # You may want to downscale high resolution depth map to get more stable values
@@ -78,7 +80,8 @@ class post(torch.nn.Module):
             else:
                 return mask
 
-    def set_grids(self, grid_height, grid_width, threshold):
+    def set_grids(self, confidence, grid_height, grid_width, threshold):
+        self.confidence = confidence
         self.grid_height = grid_height
         self.grid_width = grid_width
         self.threshold = threshold
