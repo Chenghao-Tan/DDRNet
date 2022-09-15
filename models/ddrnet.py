@@ -450,9 +450,7 @@ class DualResNet(nn.Module):
 
 
 class DDRNet23s(nn.Module):
-    def __init__(
-        self, n_channels, n_classes, scale_factor=8, augment=False, process=False
-    ):
+    def __init__(self, n_channels, n_classes, scale_factor=8, augment=False):
         super(DDRNet23s, self).__init__()
         self.n_channels = n_channels
         self.n_classes = n_classes
@@ -468,17 +466,13 @@ class DDRNet23s(nn.Module):
             scale_factor=scale_factor,
             augment=augment,
         )
-        self.pre_process = pre() if process else torch.nn.Identity()
-        self.post_process = post() if process else torch.nn.Identity()
+        self.pre_process = pre()
+        self.post_process = post()
 
     def forward(self, rgb, depth=None):
         rgb, depth = self.pre_process(rgb, depth)
         mask = self.model(rgb)
         return self.post_process(mask, depth)
-
-    def extra_process(self, enable):
-        self.pre_process = pre() if enable else torch.nn.Identity()
-        self.post_process = post() if enable else torch.nn.Identity()
 
 
 def DDRNet(n_channels=3, n_classes=1, scale_factor=8, pretrained=None):

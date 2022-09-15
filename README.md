@@ -60,7 +60,7 @@ You can run [save_onnx.py](https://github.com/Chenghao-Tan/DDRNet/blob/master/sa
 
 See **# For debug** tag in both [save_onnx.py](https://github.com/Chenghao-Tan/DDRNet/blob/master/save_onnx.py) and [models/extra.py](https://github.com/Chenghao-Tan/DDRNet/blob/master/models/extra.py) for how to export the debug version.
 
-With **net.extra_process(True)**, the exported model can be used in [Boat-Obstacle-Avoidance](https://github.com/Chenghao-Tan/Boat-Obstacle-Avoidance).
+With **net.pre_process.enable(True)**&**net.post_process.enable(True)**, the exported model can be used in [Boat-Obstacle-Avoidance](https://github.com/Chenghao-Tan/Boat-Obstacle-Avoidance).
 - Model's IO:
   - input->Image ("rgb"), Depth map ("depth")
   - output->Flattened grids info ("out")

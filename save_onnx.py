@@ -24,7 +24,8 @@ net = DDRNet23s(n_channels=3, n_classes=1, scale_factor=8)
 
 net.load_state_dict(torch.load("./BEST.pth"))
 net.eval()
-net.extra_process(True)
+net.pre_process.enable(True)
+net.post_process.enable(True)
 net.post_process.set_grids(
     confidence=CONFIDENCE,
     grid_height=GRID_HEIGHT,

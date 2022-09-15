@@ -84,7 +84,7 @@ class OutConv(torch.nn.Module):
 
 
 class UNet(torch.nn.Module):
-    def __init__(self, n_channels, n_classes, bilinear=False, process=False):
+    def __init__(self, n_channels, n_classes, bilinear=False):
         super(UNet, self).__init__()
         self.n_channels = n_channels
         self.n_classes = n_classes
@@ -101,8 +101,8 @@ class UNet(torch.nn.Module):
         self.up3 = Up(128, 64 // factor, bilinear)
         self.up4 = Up(64, 32, bilinear)
         self.outc = OutConv(32, n_classes)
-        self.pre_process = pre() if process else torch.nn.Identity()
-        self.post_process = post() if process else torch.nn.Identity()
+        self.pre_process = pre()
+        self.post_process = post()
 
     def forward(self, x, depth=None):
         x, depth = self.pre_process(x, depth)
@@ -117,7 +117,3 @@ class UNet(torch.nn.Module):
         x = self.up4(x, x1)
         logits = self.outc(x)
         return self.post_process(logits, depth)
-
-    def extra_process(self, enable):
-        self.pre_process = pre() if enable else torch.nn.Identity()
-        self.post_process = post() if enable else torch.nn.Identity()
