@@ -7,7 +7,8 @@ net = DDRNet23s(n_channels=3, n_classes=1, scale_factor=8)
 
 net.load_state_dict(torch.load("./BEST.pth"))
 net.eval()
-net.extra_process(True)
+net.pre_process.enable(True)
+net.post_process.enable(True)
 dummy_rgb = torch.randn(1, 3, 360, 640)
 dummy_depth = torch.randn(1, 1, 360, 1280)  # U16->U8
 torch.onnx.export(
