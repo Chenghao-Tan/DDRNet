@@ -1,7 +1,9 @@
 # DDRNet for Boat Obstacle Avoidance
 **This project is modified from [U-Net: Semantic segmentation with PyTorch](https://github.com/milesial/Pytorch-UNet)**
 
-**Check [master branch](https://github.com/Chenghao-Tan/DDRNet) if you want to train your own model for the \*LATEST\* [Boat-Obstacle-Avoidance](https://github.com/Chenghao-Tan/Boat-Obstacle-Avoidance).**
+**This is for [Boat-Obstacle-Avoidance OAK-D-IoT branch](https://github.com/Chenghao-Tan/Boat-Obstacle-Avoidance/tree/OAK-D-IoT).**
+
+**Check [master branch](https://github.com/Chenghao-Tan/DDRNet) if you want to train your own model for the \*LATEST\* [Boat-Obstacle-Avoidance](https://github.com/Chenghao-Tan/Boat-Obstacle-Avoidance). The .pth weights file is generic, switching between branches or changing onnx export settings does not require retraining, just use the same .pth and rerun `save_onnx.py` in the desired branch.**
 
 
 ## Overview
@@ -45,16 +47,16 @@ optional arguments:
 
 ### Tips:
 - Recommend to set `--epochs` to 1,3,7,15,31,63...
-- You can use `--scale` to scale the image while keeping the aspect ratio, but it's recommended to modify [data_loading.py](https://github.com/Chenghao-Tan/DDRNet/blob/master/utils/data_loading.py) directly. (Uncomment **A.Resize(height, width)**).
+- You can use `--scale` to scale the image while keeping the aspect ratio, but it's recommended to modify [data_loading.py](https://github.com/Chenghao-Tan/DDRNet/blob/OAK-D-IoT/utils/data_loading.py) directly. (Uncomment **A.Resize(height, width)**).
 - `--amp` is not recommended as it may drastically reduce precision.
 
 Trainable parameters will be saved to the `checkpoints` folder in .pth. Only the best results will be saved by default. However, because the mIoU values appended to the filename are usually different, there could be more than one file.
 
 
 ## Export ONNX (for blob converting)
-You can run [save_onnx.py](https://github.com/Chenghao-Tan/DDRNet/blob/master/save_onnx.py) to convert `"./BEST.pth"` to `"./BEST.onnx"`. You can change the IO resolution in this file.
+You can run [save_onnx.py](https://github.com/Chenghao-Tan/DDRNet/blob/OAK-D-IoT/save_onnx.py) to convert `"./BEST.pth"` to `"./BEST.onnx"`. You can change the IO resolution in this file.
 
-See **# For debug** tag in both [save_onnx.py](https://github.com/Chenghao-Tan/DDRNet/blob/master/save_onnx.py) and [models/extra.py](https://github.com/Chenghao-Tan/DDRNet/blob/master/models/extra.py) for how to export the debug version.
+See **# For debug** tag in both [save_onnx.py](https://github.com/Chenghao-Tan/DDRNet/blob/OAK-D-IoT/save_onnx.py) and [models/extra.py](https://github.com/Chenghao-Tan/DDRNet/blob/OAK-D-IoT/models/extra.py) for how to export the debug version.
 
 With **net.pre_process.enable(True)**&**net.post_process.enable(True)**, the exported onnx model is end-to-end.
 - Model's IO:
@@ -67,8 +69,8 @@ With **net.pre_process.enable(True)**&**net.post_process.enable(True)**, the exp
 
 
 ## Other tools
-- [test_onnx.py](https://github.com/Chenghao-Tan/DDRNet/blob/master/test_onnx.py) is for testing the exported onnx using onnxruntime. The default image input is `"./input.png"` and the depth map input is simulated with ones.
-- [flops.py](https://github.com/Chenghao-Tan/DDRNet/blob/master/flops.py) is for getting the model's number of parameters and estimated computational complexity.
+- [test_onnx.py](https://github.com/Chenghao-Tan/DDRNet/blob/OAK-D-IoT/test_onnx.py) is for testing the exported onnx using onnxruntime. The default image input is `"./input.png"` and the depth map input is simulated with ones.
+- [flops.py](https://github.com/Chenghao-Tan/DDRNet/blob/OAK-D-IoT/flops.py) is for getting the model's number of parameters and estimated computational complexity.
 
 
 ## Weights & Biases
