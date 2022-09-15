@@ -2,6 +2,9 @@
 HEIGHT = 360  # TODO
 WIDTH = 640  # TODO
 
+# Built-in Obstacle Detection
+DETECTION = True
+
 # Segmentation Confidence Threshold
 CONFIDENCE = 0.9  # TODO
 
@@ -33,7 +36,7 @@ net.post_process.set_grids(
     threshold=THRESHOLD,
 )  # type: ignore
 dummy_rgb = torch.randn(1, 3, HEIGHT, WIDTH)
-dummy_depth = torch.randn(1, 1, HEIGHT, WIDTH * 2)  # U16->U8
+dummy_depth = torch.randn(1, 1, HEIGHT, WIDTH * 2) if DETECTION else None
 torch.onnx.export(
     net,
     (dummy_rgb, dummy_depth),

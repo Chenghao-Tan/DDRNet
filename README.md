@@ -1,7 +1,9 @@
 # DDRNet for Boat Obstacle Avoidance
 **This project is modified from [U-Net: Semantic segmentation with PyTorch](https://github.com/milesial/Pytorch-UNet)**
 
-**Models in this branch output label and depth only!!! Check [OAK-D-IoT branch](https://github.com/Chenghao-Tan/DDRNet/tree/OAK-D-IoT) for the previous end-to-end models which output label and 3D distance.**
+**This branch (master) is used with the latest [Boat-Obstacle-Avoidance](https://github.com/Chenghao-Tan/Boat-Obstacle-Avoidance). Please note that models in this branch output label&depth or confidence map only!!! Check [OAK-D-IoT branch](https://github.com/Chenghao-Tan/DDRNet/tree/OAK-D-IoT) for the previous end-to-end models which output label and 3D distance.**
+
+**The .pth weights file is generic, switching between branches or changing onnx export settings does not require retraining, just use the same .pth and rerun `save_onnx.py` in the desired branch.**
 
 
 ## Overview
@@ -54,17 +56,18 @@ Trainable parameters will be saved to the `checkpoints` folder in .pth. Only the
 
 
 ## Export ONNX (for blob converting)
-You can run [save_onnx.py](https://github.com/Chenghao-Tan/DDRNet/blob/master/save_onnx.py) to convert `"./BEST.pth"` to `"./BEST.onnx"`. You can change **IO resolution and grid settings** of the onnx model to be exported in this file.
+You can run [save_onnx.py](https://github.com/Chenghao-Tan/DDRNet/blob/master/save_onnx.py) to convert `"./BEST.pth"` to `"./BEST.onnx"`. You can change **IO resolution and detection settings** of the onnx model to be exported in this file. You can turn off obstacle detection (to hand it over to the companion computer) so that the model only outputs a confidence map.
 
 *Note: the height and width of the grid must be divisible by the resolution.*
 
-See **# For debug** tag in both [save_onnx.py](https://github.com/Chenghao-Tan/DDRNet/blob/master/save_onnx.py) and [models/extra.py](https://github.com/Chenghao-Tan/DDRNet/blob/master/models/extra.py) for how to export the debug version.
+See **# For debug** tag in both [save_onnx.py](https://github.com/Chenghao-Tan/DDRNet/blob/master/save_onnx.py) and [models/extra.py](https://github.com/Chenghao-Tan/DDRNet/blob/master/models/extra.py) for how to export the obstacle detection debug version.
 
 With **net.pre_process.enable(True)**&**net.post_process.enable(True)**, the exported model can be used in [Boat-Obstacle-Avoidance](https://github.com/Chenghao-Tan/Boat-Obstacle-Avoidance).
 - Model's IO:
   - input->Image ("rgb"), Depth map ("depth")
   - output->Flattened grids info ("out")
   - debug output->Flattened grids info ("out"), Filtered depth map ("debug")
+  - no detection output->confidence map ("out")
 - Flattened grids info: (label, z for each grid, flattened in 1D)
   - label: 0 for background, 1 for obstacles (binary classification)
   - z: depth, in meters

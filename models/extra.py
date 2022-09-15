@@ -6,7 +6,7 @@ class pre(torch.nn.Module):
         super(pre, self).__init__()
         self.en = False
 
-    def forward(self, rgb, depth):
+    def forward(self, rgb, depth=None):
         with torch.no_grad():
             if self.en:
                 rgb = (rgb - rgb.min()) / (rgb.max() - rgb.min())
@@ -31,7 +31,7 @@ class post(torch.nn.Module):
         self.grid_width = 128
         self.threshold = 0.2
 
-    def forward(self, mask, depth):
+    def forward(self, mask, depth=None):
         with torch.no_grad():
             if self.en:
                 if mask.shape[1] == 1:  # channel_dim
