@@ -198,6 +198,8 @@ def writing_worker(wQ, args):
             mask += m * i  # 2->sky, 3->more...
         mask[mask > len(masks)] = 4  # Overlap defaults to 4 (unknown)
 
+        # Sometimes the prompt point(s) happen to be on the obstacles instead of water/sky/...
+        # It's also why you should set annotation level carefully.
         threshold = 0.25  # Proportion of water&sky&... should be greater than threshold
         if ((mask > 0) & (mask != 4)).sum() / (
             mask.shape[0] * mask.shape[1]
