@@ -220,10 +220,11 @@ def writing_worker(wQ, args):
         if not os.path.exists(masks_path):
             os.makedirs(masks_path)
             logging.warning(f"Creating directory: {masks_path}...")
-        copyfile(
-            os.path.join(os.path.abspath(args.source), name),
-            os.path.join(imgs_path, f"{name}.png"),
-        )  # Copy image
+        Image.open(os.path.join(os.path.abspath(args.source), name)).resize(
+            args.output_size  # WxH
+        ).save(
+            os.path.join(imgs_path, f"{name}.png"), quality=100  # In case of jpg
+        )  # Resize and save image
         mask.save(
             os.path.join(masks_path, f"{name}.png"),
             quality=100,  # In case of jpg
