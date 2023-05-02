@@ -303,7 +303,7 @@ if __name__ == "__main__":
     logging.info(f"Preparation done.")
 
     batch_count = 0
-    bottleneck_count = 0
+    bottleneck_count_I = bottleneck_count_O = 0
     bottleneck_threshold = 3  # Max bottleneck_count before warning
     with tqdm(total=len(ids)) as pbar:
         pbar.set_description("Processing")
@@ -315,11 +315,11 @@ if __name__ == "__main__":
             batched_input = []
             for i in range(args.batch_size):
                 if lQ.empty() and batch_count > 0:
-                    if bottleneck_count > bottleneck_threshold:
+                    if bottleneck_count_I > bottleneck_threshold:
                         logging.warning(
-                            f"May consider to increase --num-workers for better GPU utilization."
+                            f"May consider to increase --num-workers I _ for better GPU utilization."
                         )
-                    bottleneck_count += 1
+                    bottleneck_count_I += 1
                 input_dict = lQ.get(timeout=60)  # 60s loading timeout
                 for x in input_dict.keys():
                     if torch.is_tensor(input_dict[x]):
@@ -339,11 +339,11 @@ if __name__ == "__main__":
                     if torch.is_tensor(output_dict[x]):
                         output_dict[x] = output_dict[x].to("cpu")
                 if wQ.full():
-                    if bottleneck_count > bottleneck_threshold:
+                    if bottleneck_count_O > bottleneck_threshold:
                         logging.warning(
-                            f"May consider to increase --num-workers for better GPU utilization."
+                            f"May consider to increase --num-workers _ O for better GPU utilization."
                         )
-                    bottleneck_count += 1
+                    bottleneck_count_O += 1
                 wQ.put(output_dict, timeout=60)  # 60s writing timeout
 
             pbar.update(len(batched_output))
