@@ -117,13 +117,9 @@ def train_net(
 
                 images = images.to(device=device, dtype=torch.float32)
                 true_masks = true_masks.to(device=device)
-                ignore_masks = (
-                    F.one_hot(true_masks)
-                    .permute(0, 3, 1, 2)[:, 4, :, :]
-                    .unsqueeze(dim=1)
-                )
-                true_masks = F.one_hot(true_masks).permute(0, 3, 1, 2)[:, 0, :, :]
-                true_masks = true_masks.unsqueeze(dim=1)
+                one_hot_masks = F.one_hot(true_masks, num_classes=5).permute(0, 3, 1, 2)
+                ignore_masks = one_hot_masks[:, 4, :, :].unsqueeze(dim=1)
+                true_masks = one_hot_masks[:, 0, :, :].unsqueeze(dim=1)
 
                 with torch.cuda.amp.autocast_mode.autocast(enabled=amp):
                     masks_pred = net(images)
@@ -209,7 +205,8 @@ def train_net(
                         best = val_miou
                         Path(dir_checkpoint).mkdir(parents=True, exist_ok=True)
                         torch.save(
-                            net.state_dict(), f"{dir_checkpoint}BEST_mIoU{best}.pth",
+                            net.state_dict(),
+                            f"{dir_checkpoint}BEST_mIoU{best}.pth",
                         )
                         logging.info(f"Best(mIoU{best}) pth saved!")
 
@@ -247,7 +244,11 @@ def get_args():
         dest="lr",
     )
     parser.add_argument(
-        "--load", "-f", type=str, default=False, help="Load model from a .pth file",
+        "--load",
+        "-f",
+        type=str,
+        default=False,
+        help="Load model from a .pth file",
     )
     parser.add_argument(
         "--scale",

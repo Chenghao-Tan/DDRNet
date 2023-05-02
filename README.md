@@ -1,15 +1,15 @@
 # DDRNet for Boat Obstacle Avoidance
 **This project is modified from [U-Net: Semantic segmentation with PyTorch](https://github.com/milesial/Pytorch-UNet)**
 
-**This branch (master) is used with the latest [Boat-Obstacle-Avoidance](https://github.com/Chenghao-Tan/Boat-Obstacle-Avoidance). Please note that models in this branch output label&depth or confidence map only!!! Check [OAK-D-IoT branch](https://github.com/Chenghao-Tan/DDRNet/tree/OAK-D-IoT) for the previous end-to-end models which output label and 3D distance.**
+**This branch (master) is used with the latest [Boat-Obstacle-Avoidance](https://github.com/Chenghao-Tan/Boat-Obstacle-Avoidance). Note that you can now generate a dataset from a set of photos taken from the on-boat camera's perspective to improve the model's performance in specific areas. See Use SAM.**
 
-**The .pth weights file is generic, switching between branches or changing onnx export settings does not require retraining, just use the same .pth and rerun `save_onnx.py` in the desired branch.**
+**The .pth weights file is generic, changing onnx export settings or switching between DDRNet branches does not require retraining, just use the same .pth and rerun `save_onnx.py`.**
 
 
 ## Overview
 This is a custom training framework supporting **DDRNet and UNet(deprecated).** It is used to train the water segmentation AI model required by [Boat-Obstacle-Avoidance](https://github.com/Chenghao-Tan/Boat-Obstacle-Avoidance). (Prepare your own dataset, train a new model, export the model in ONNX format, then use [Luxonis blobconverter](http://blobconverter.luxonis.com/) to convert the ONNX to blob, which is required by the scripts.)
 
-The built-in models are modified and **use MaSTr1325 format dataset**. See **Data**.
+The built-in models are modified and **use MaSTr1325 format dataset**. See **Data format**.
 
 You can export onnx file for [Luxonis blobconverter](http://blobconverter.luxonis.com/). See **Export ONNX**.
 
@@ -18,11 +18,57 @@ You can export onnx file for [Luxonis blobconverter](http://blobconverter.luxoni
 
 
 ## Prepare
-*Note: Use Python 3.6 or newer*
+*Note: Use Python 3.8 or newer*
+
+It's recommended to use **conda** to install PyTorch and torchvision with CUDA support first. Please follow the official instructions [here](https://pytorch.org/get-started/locally/). Then install the rest packages through **pip**:
 
 ```bash
 pip install -r requirements.txt
 ```
+
+
+## Use SAM (optional)
+You can use SAM (Segment-Anything-Model) to generate your unique training dataset automatically. This step will significantly improve the performance of the model in specific areas. You are also welcome to submit your dataset to the community for building better models in the future.
+
+```bash
+git submodule update --init --recursive
+cd segment-anything
+pip install -e .
+```
+
+Download the checkpoint(s) from Meta. See [here](https://github.com/facebookresearch/segment-anything#model-checkpoints). Take as many pictures as possible from the on-boat camera's perspective. Then you can start dataset generation without manually annotating:
+
+```console
+> python SAM.py -h
+usage: SAM.py [-h] -m TYPE -l PATH -s PATH [-e EXT] [-t PATH] [-b SIZE] [-n I O] [-a LEVEL] [-o W H] [--no-multimask]
+
+Use SAM to automatically generate dataset (MaSTr1325-like).
+
+options:
+  -h, --help            show this help message and exit
+  -m TYPE, --model TYPE
+                        vit_h/vit_l/vit_b
+  -l PATH, --load PATH  Load model from a .pth file
+  -s PATH, --source PATH
+                        Unlabeled image source (non-recursive)
+  -e EXT, --ext EXT     Filter input image by extension (png/jpg/...)
+  -t PATH, --target PATH
+                        Output location
+  -b SIZE, --batch-size SIZE
+                        Batch size (increase = more VRAM & more speed)
+  -n I O, --num-workers I O
+                        Number of processes loading and writing data, respectively
+  -a LEVEL, --annotation-level LEVEL
+                        1->water, 2->water&sky
+  -o W H, --output-size W H
+                        Size of the output images and masks (WxH)
+  --no-multimask        Generate a single mask instead of picking the best one
+```
+
+### Tips:
+- You may have to wait a while for it to load. Specify `--model`, `--load` and `--source`, and then it will automatically annotate the images and place them in the training folder (`./data`).
+- Performance: **vit_h** > **vit_l** > **vit_b**. Speed is in reverse. When `--batch-size` is set to 1, **vit_b** needs < 4GB VRAM, **vit_l** needs < 6GB, **vit_h** needs < 8GB. More `--batch-size` usually means more speed, but it also takes more VRAM and needs a more powerful GPU.
+- Please set `--annotation-level` according to the pictures you take. For example, if there are mostly water and obstacles, barely sky or other things, set it to 1. This is because the prompt points are fixed at 10% below and above the edge of the image.
 
 
 ## Training
@@ -60,7 +106,7 @@ You can run [save_onnx.py](https://github.com/Chenghao-Tan/DDRNet/blob/master/sa
 
 *Note: the height and width of the grid must be divisible by the resolution.*
 
-See **# For debug** tag in both [save_onnx.py](https://github.com/Chenghao-Tan/DDRNet/blob/master/save_onnx.py) and [models/extra.py](https://github.com/Chenghao-Tan/DDRNet/blob/master/models/extra.py) for how to export the obstacle detection debug version.
+Check **# For debug** tag in both [save_onnx.py](https://github.com/Chenghao-Tan/DDRNet/blob/master/save_onnx.py) and [models/extra.py](https://github.com/Chenghao-Tan/DDRNet/blob/master/models/extra.py) for how to export the obstacle detection debug version.
 
 With **net.pre_process.enable(True)**&**net.post_process.enable(True)**, the exported model can be used in [Boat-Obstacle-Avoidance](https://github.com/Chenghao-Tan/Boat-Obstacle-Avoidance).
 - Model's IO:
@@ -91,7 +137,7 @@ You can load your own pth as pretrained value using `--load`. (The DDRNet model 
 There's also a model (`mIoU_0.9042.pth`) pretrained on MaSTr1325 dataset. (mIoU 0.9042, trained & validated at 640*360)
 
 
-## Data
+## Data format
 The input images and target masks should be in the `data/imgs` and `data/masks` folders respectively (note that the `imgs` and `masks` folder should not contain any sub-folder or any other files, due to the greedy data-loader). Images should be **jpg** and masks should be **png**. Images and masks should have the same name and resolution.
 
 As MaSTr1325 does, labels in masks should correspond to the following values:

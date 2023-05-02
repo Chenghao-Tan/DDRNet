@@ -8,3 +8,6 @@ BEST.pth
 BEST.onnx
 input.png
 output.png
+sam_vit_h_*.pth
+sam_vit_l_*.pth
+sam_vit_b_*.pth
