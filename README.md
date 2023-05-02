@@ -98,7 +98,7 @@ optional arguments:
 - You can use `--scale` to scale the image while keeping the aspect ratio, but it's recommended to modify [data_loading.py](https://github.com/Chenghao-Tan/DDRNet/blob/master/utils/data_loading.py) directly. (Uncomment **A.Resize(height, width)**).
 - `--amp` is not recommended as it may drastically reduce precision.
 
-Trainable parameters will be saved to the `checkpoints` folder in .pth. Only the best results will be saved by default. However, because the mIoU values appended to the filename are usually different, there could be more than one file.
+Trainable parameters will be saved to the `checkpoints` folder as .pth. Only the best one will be saved by default.
 
 
 ## Export ONNX (for blob converting)

@@ -102,6 +102,7 @@ def train_net(
 
     # 5. Begin training
     best = 0
+    best_file = None
     for epoch in range(epochs):
         net.train()
         epoch_loss = 0
@@ -211,6 +212,9 @@ def train_net(
                             net.state_dict(),
                             f"{dir_checkpoint}BEST_mIoU{best}.pth",
                         )
+                        if best_file and os.path.exists(best_file):
+                            os.remove(best_file)  # Remove other best saves
+                        best_file = f"{dir_checkpoint}BEST_mIoU{best}.pth"
                         logging.info(f"Best(mIoU{best}) pth saved!")
 
         if save_checkpoint:
