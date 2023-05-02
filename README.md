@@ -20,7 +20,7 @@ You can export onnx file for [Luxonis blobconverter](http://blobconverter.luxoni
 ## Prepare
 *Note: Use Python 3.8 or newer*
 
-It's recommended to use **conda** to install PyTorch and torchvision with CUDA support first. Please follow the official instructions [here](https://pytorch.org/get-started/locally/). Then install the rest packages through **pip**:
+**First, install PyTorch(>=1.7) and torchvision(>=0.8) with CUDA support.** It's recommended to use **conda**. Please follow the official instructions [here](https://pytorch.org/get-started/locally/). Then install the rest packages (except SAM) through **pip**:
 
 ```bash
 pip install -r requirements.txt
