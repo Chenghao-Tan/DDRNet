@@ -1,17 +1,18 @@
 import argparse
 import logging
 import math
+import os
 import sys
 from pathlib import Path
 
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+import wandb
 from torch import optim
 from torch.utils.data import DataLoader, random_split
 from tqdm import tqdm
 
-import wandb
 from FP16 import evaluate
 from models import DDRNet, UNet
 from utils.data_loading import BasicDataset
@@ -45,7 +46,9 @@ def train_net(
     )
 
     # 3. Create data loaders
-    loader_args = dict(batch_size=batch_size, num_workers=4, pin_memory=True)
+    loader_args = dict(
+        batch_size=batch_size, num_workers=0 if os.name == "nt" else 4, pin_memory=True
+    )
     train_loader = DataLoader(train_set, shuffle=True, drop_last=True, **loader_args)
     val_loader = DataLoader(val_set, shuffle=False, drop_last=False, **loader_args)
 
