@@ -40,7 +40,7 @@ Download the checkpoint(s) from Meta. See [here](https://github.com/facebookrese
 
 ```console
 > python SAM.py -h
-usage: SAM.py [-h] -m TYPE -l PATH -s PATH [-e EXT] [-t PATH] [-b SIZE] [-n I O] [-a LEVEL] [-o W H] [--no-multimask]
+usage: SAM.py [-h] -m TYPE -l PATH -s PATH [-e EXT] [-t PATH] [-b SIZE] [-n I O] [-a LEVEL] [-o W H] [--no-multimask] [--visualize]
 
 Use SAM to automatically generate dataset (MaSTr1325-like).
 
@@ -63,6 +63,7 @@ options:
   -o W H, --output-size W H
                         Size of the output images and masks (WxH)
   --no-multimask        Generate a single mask instead of picking the best one
+  --visualize           Visualize the output mask (for debug)
 ```
 
 ### Tips:
@@ -146,4 +147,4 @@ As MaSTr1325 does, labels in masks should correspond to the following values:
   - Sky = 2 (value two)
   - Ignore region / unknown category = 4 (value four)
 
-However, the framework only does binary classification by default (ignore region is still used).  Therefore in the output label, 1 represents the obstacle and 0 represents the background.
+However, the framework only does binary classification by default (ignore region is still used).  Therefore in the DDRNet output label, 1 represents the obstacle and 0 represents the background.

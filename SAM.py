@@ -103,6 +103,12 @@ def get_args():
         help="Generate a single mask instead of picking the best one",
         dest="multimask",
     )
+    parser.add_argument(
+        "--visualize",
+        action="store_true",
+        default=False,
+        help="Visualize the output mask (for debug)",
+    )
     return parser.parse_args()
 
 
@@ -186,22 +192,24 @@ def loading_worker(lQ, ids, transform, args):
 
 
 def visualize(image, mask):
-    mask = np.array(mask)
-    top = Image.new("RGBA", image.size)
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     colors = {
-        0: (255, 0, 0, 128),  # Red
-        1: (0, 255, 0, 128),  # Green
-        2: (0, 0, 255, 128),  # Blue
+        0: torch.tensor([255, 0, 0, 128], dtype=torch.uint8, device=device),  # Red
+        1: torch.tensor([0, 255, 0, 128], dtype=torch.uint8, device=device),  # Green
+        2: torch.tensor([0, 0, 255, 128], dtype=torch.uint8, device=device),  # Blue
     }
 
-    for y in range(mask.shape[0]):
-        for x in range(mask.shape[1]):
-            value = mask[y, x]
-            if value in colors:
-                top.putpixel((x, y), colors[value])
+    mask = torch.tensor(np.array(mask), dtype=torch.uint8, device=device)
+    top = torch.zeros((*mask.shape, 4), dtype=torch.uint8, device=device)
 
-    return Image.alpha_composite(image.convert("RGBA"), top)
+    for value, color in colors.items():
+        condition = (mask == value).unsqueeze(-1)
+        color_expanded = color.unsqueeze(0).unsqueeze(1).expand_as(top)
+        top = torch.where(condition, color_expanded, top)
+
+    top = Image.fromarray(top.cpu().numpy(), mode="RGBA")
+    return Image.alpha_composite(image.convert("RGBA"), top).convert("RGB")
 
 
 def writing_worker(wQ, args):
@@ -229,7 +237,7 @@ def writing_worker(wQ, args):
         image_raw.save(
             os.path.join(imgs_path, f"{name}.png"), quality=100  # In case of jpg
         )  # Save image
-        if False:  # Debug output
+        if args.visualize:  # Debug output
             mask = visualize(image_raw, mask)
         mask.save(
             os.path.join(masks_path, f"{name}.png"), quality=100  # In case of jpg
@@ -238,9 +246,9 @@ def writing_worker(wQ, args):
 
 if __name__ == "__main__":
     args = get_args()
-    logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
+    logging.basicConfig(level=logging.INFO, format="\n%(levelname)s: %(message)s")
 
-    device = "cuda"  # It will be painfully slow on CPU
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     logging.info(
         f"""Starting SAM...
         Model Type:           {args.model}
@@ -253,6 +261,7 @@ if __name__ == "__main__":
         Annotation Level:     {args.annotation_level}->{"water"+("&sky" if args.annotation_level==2 else "")}
         Output Size:          {args.output_size}
         Multimask:            {args.multimask}
+        Visualize:            {args.visualize}
         Inference Device:     {device}
     """
     )
@@ -410,6 +419,7 @@ if __name__ == "__main__":
             done_count += saved_count
             if exit == args.num_workers[0]:  # If no more data is coming
                 pbar.update(len(ids) - done_count)  # Forced set progress to 100%
+                pbar.close()  # Maintain the order of log output
                 break
 
         logging.info(f"{done_count} done! Exiting...")
