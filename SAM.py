@@ -307,6 +307,7 @@ if __name__ == "__main__":
                         resize_transform,
                         args,
                     ),
+                    daemon=True,
                 )
             )
             lW[i].start()
@@ -317,115 +318,127 @@ if __name__ == "__main__":
             pbar.update(1)
     logging.info(f"Preparation done.")
 
-    bottleneck_count_I = bottleneck_count_O = 0
-    bottleneck_threshold = 3  # Max bottleneck_count before warning
-    with tqdm(total=len(ids)) as pbar:
-        pbar.set_description("Processing")
+    try:
+        bottleneck_count_I = bottleneck_count_O = 0
+        bottleneck_threshold = 3  # Max bottleneck_count before warning
+        with tqdm(total=len(ids)) as pbar:
+            pbar.set_description("Processing")
 
-        done_count = 0
-        exit = 0  # Loading worker exit counter
-        while True:
-            raw = []  # [(file_name, raw_PIL_Image), ...]
-
-            # Load a batch
-            batched_input = []
+            done_count = 0
+            exit = 0  # Loading worker exit counter
             while True:
-                # Get input data
-                if lQ.empty() and done_count > 0:
-                    if bottleneck_count_I > bottleneck_threshold:
-                        logging.warning(
-                            f"May consider to increase --num-workers I _ for better GPU utilization."
-                        )
-                    bottleneck_count_I += 1
-                input_dict = lQ.get(timeout=60)  # 60s loading timeout
+                raw = []  # [(file_name, raw_PIL_Image), ...]
 
-                if len(input_dict) == 0:  # If it is an empty dict
-                    exit += 1  # Then it means a loading worker exited
-                    if exit == args.num_workers[0]:  # If no more data is coming
-                        break
-                else:
-                    # Move to GPU
-                    for x in input_dict.keys():
-                        if torch.is_tensor(input_dict[x]):
-                            input_dict[x] = input_dict[x].to(device)
-
-                    # Pre-process
-                    # Pass through necessary things
-                    raw.append((input_dict["name"], input_dict["raw"]))
-                    del input_dict["name"]
-                    del input_dict["raw"]
-
-                    batched_input.append(input_dict)
-                    if len(batched_input) == args.batch_size:  # If a batch is ready
-                        break
-
-            saved_count = len(batched_input)
-            if len(batched_input):  # If input is not empty
-                # Inference
-                batched_output = sam(batched_input, multimask_output=args.multimask)
-
-                # Unpack a batch
-                for i, output_dict in enumerate(batched_output):
-                    # Post-process
-                    # Select the best masks (for multimask feature)
-                    masks = output_dict["masks"]
-                    scores = output_dict["iou_predictions"]
-                    if masks.shape[1] > 1:  # A.K.A. args.multimask==True
-                        masks = masks[
-                            torch.arange(masks.shape[0]), scores.argmax(dim=1)
-                        ]  # Select masks with the highest scores
-                    else:
-                        masks = masks[:, 0, :, :]  # A.K.A. masks.squeeze(dim=1)
-
-                    # Post-process
-                    # Merge multi-classes into one mask per image
-                    mask = masks[0].type(torch.uint8)  # 1->water
-                    for j, m in enumerate(masks[1:], start=2):
-                        mask += m * j  # 2->sky, 3->more...
-                    mask[mask > len(masks)] = 4  # Overlap defaults to 4 (unknown)
-
-                    # Post-process
-                    # Sometimes the prompt point(s) happen to be on the obstacles instead of water/sky/...
-                    # It's also why you should set annotation level carefully.
-                    threshold = 0.25  # Proportion of water&sky&... should be greater than threshold
-                    if ((mask > 0) & (mask != 4)).sum() / (
-                        mask.shape[0] * mask.shape[1]
-                    ) < threshold:
-                        saved_count -= 1
-                        logging.warning(
-                            f"Jumped one image ({raw[i][0]}) due to poor annotation quality."
-                        )
-                        continue
-
-                    # Post-process
-                    # Rebuild output dict
-                    output_dict = {"name": raw[i][0], "raw": raw[i][1], "mask": mask}
-
-                    # Move to CPU
-                    for x in output_dict.keys():
-                        if torch.is_tensor(output_dict[x]):
-                            output_dict[x] = output_dict[x].to("cpu")
-
-                    # Send output data
-                    if wQ.full():
-                        if bottleneck_count_O > bottleneck_threshold:
+                # Load a batch
+                batched_input = []
+                while True:
+                    # Get input data
+                    if lQ.empty() and done_count > 0:
+                        if bottleneck_count_I > bottleneck_threshold:
                             logging.warning(
-                                f"May consider to increase --num-workers _ O for better GPU utilization."
+                                f"May consider to increase --num-workers I _ for better GPU utilization."
                             )
-                        bottleneck_count_O += 1
-                    wQ.put(output_dict, timeout=60)  # 60s writing timeout
+                        bottleneck_count_I += 1
+                    input_dict = lQ.get(timeout=60)  # 60s loading timeout
 
-            pbar.update(saved_count)
-            done_count += saved_count
-            if exit == args.num_workers[0]:  # If no more data is coming
-                pbar.update(len(ids) - done_count)  # Forced set progress to 100%
-                pbar.close()  # Maintain the order of log output
-                break
+                    if len(input_dict) == 0:  # If it is an empty dict
+                        exit += 1  # Then it means a loading worker exited
+                        if exit == args.num_workers[0]:  # If no more data is coming
+                            break
+                    else:
+                        # Move to GPU
+                        for x in input_dict.keys():
+                            if torch.is_tensor(input_dict[x]):
+                                input_dict[x] = input_dict[x].to(device)
 
-        logging.info(f"{done_count} done! Exiting...")
-        for i in range(args.num_workers[1]):  # Inform writing workers to exit
-            wQ.put({}, timeout=60)  # 60s writing timeout
-        for i in lW:  # Waiting for loading workers to exit
-            i.join()
-        for i in wW:  # Waiting for writing workers to exit
+                        # Pre-process
+                        # Pass through necessary things
+                        raw.append((input_dict["name"], input_dict["raw"]))
+                        del input_dict["name"]
+                        del input_dict["raw"]
+
+                        batched_input.append(input_dict)
+                        if len(batched_input) == args.batch_size:  # If a batch is ready
+                            break
+
+                saved_count = len(batched_input)
+                if len(batched_input):  # If input is not empty
+                    # Inference
+                    batched_output = sam(batched_input, multimask_output=args.multimask)
+
+                    # Unpack a batch
+                    for i, output_dict in enumerate(batched_output):
+                        # Post-process
+                        # Select the best masks (for multimask feature)
+                        masks = output_dict["masks"]
+                        scores = output_dict["iou_predictions"]
+                        if masks.shape[1] > 1:  # A.K.A. args.multimask==True
+                            masks = masks[
+                                torch.arange(masks.shape[0]), scores.argmax(dim=1)
+                            ]  # Select masks with the highest scores
+                        else:
+                            masks = masks[:, 0, :, :]  # A.K.A. masks.squeeze(dim=1)
+
+                        # Post-process
+                        # Merge multi-classes into one mask per image
+                        mask = masks[0].type(torch.uint8)  # 1->water
+                        for j, m in enumerate(masks[1:], start=2):
+                            mask += m * j  # 2->sky, 3->more...
+                        mask[mask > len(masks)] = 4  # Overlap defaults to 4 (unknown)
+
+                        # Post-process
+                        # Sometimes the prompt point(s) happen to be on the obstacles instead of water/sky/...
+                        # It's also why you should set annotation level carefully.
+                        threshold = 0.25  # Proportion of water&sky&... should be greater than threshold
+                        if ((mask > 0) & (mask != 4)).sum() / (
+                            mask.shape[0] * mask.shape[1]
+                        ) < threshold:
+                            saved_count -= 1
+                            logging.warning(
+                                f"Jumped one image ({raw[i][0]}) due to poor annotation quality."
+                            )
+                            continue
+
+                        # Post-process
+                        # Rebuild output dict
+                        output_dict = {
+                            "name": raw[i][0],
+                            "raw": raw[i][1],
+                            "mask": mask,
+                        }
+
+                        # Move to CPU
+                        for x in output_dict.keys():
+                            if torch.is_tensor(output_dict[x]):
+                                output_dict[x] = output_dict[x].to("cpu")
+
+                        # Send output data
+                        if wQ.full():
+                            if bottleneck_count_O > bottleneck_threshold:
+                                logging.warning(
+                                    f"May consider to increase --num-workers _ O for better GPU utilization."
+                                )
+                            bottleneck_count_O += 1
+                        wQ.put(output_dict, timeout=60)  # 60s writing timeout
+
+                pbar.update(saved_count)
+                done_count += saved_count
+                if exit == args.num_workers[0]:  # If no more data is coming
+                    pbar.update(len(ids) - done_count)  # Forced set progress to 100%
+                    pbar.close()  # Maintain the order of log output
+                    break
+
+            logging.info(f"{done_count} done! Exiting...")
+            for i in range(args.num_workers[1]):  # Inform writing workers to exit
+                wQ.put({}, timeout=60)  # 60s writing timeout
+    except Exception as e:
+        logging.error(e)
+        try:
+            for i in range(args.num_workers[1]):  # Try to let writing workers finish
+                wQ.put({}, timeout=60)  # 60s writing timeout
+        except:
+            for i in wW:  # Terminate writing workers
+                i.terminate()
+    finally:
+        for i in wW:  # Wait for writing workers to exit
             i.join()
