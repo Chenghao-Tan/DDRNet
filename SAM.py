@@ -2,7 +2,6 @@ import argparse
 import logging
 import os
 from multiprocessing import Process, Queue
-from shutil import copyfile
 
 import numpy as np
 import torch
@@ -110,10 +109,13 @@ def get_args():
 def loading_worker(lQ, ids, transform, args):
     for id in ids:
         name = os.path.basename(id)
-        image = Image.open(id)
-        image_size = (image.size[1], image.size[0])  # H x W
+        if not os.path.exists(id):
+            logging.error(f"{id} does not exist!")
+            continue  # Just skip it
+        image_raw = Image.open(id)
+        image_size = (image_raw.size[1], image_raw.size[0])  # H x W
 
-        image = np.array(image)
+        image = np.array(image_raw)
         image = transform.apply_image(image)  # Recommend this over *_torch version
         image = torch.as_tensor(image)
         image = image.permute(2, 0, 1).contiguous()
@@ -175,17 +177,26 @@ def loading_worker(lQ, ids, transform, args):
                 "point_coords": prompt_points,
                 "point_labels": prompt_label,
                 "name": name,
+                "raw": image_raw,
             },
         )
+
+    # Before exiting
+    lQ.put({})  # Put an empty dict
 
 
 def writing_worker(wQ, args):
     while True:
         output_dict = wQ.get()
+        if len(output_dict) == 0:  # Signal for exiting
+            break  # Exit
+
         name = output_dict["name"]
+        image_raw = output_dict["raw"]
         masks = output_dict["masks"]
         scores = output_dict["iou_predictions"]
 
+        # Select the best masks (for multimask feature)
         if masks.shape[1] > 1:  # A.K.A. args.multimask==True
             masks = masks[
                 torch.arange(masks.shape[0]), scores.argmax(dim=1)
@@ -193,6 +204,7 @@ def writing_worker(wQ, args):
         else:
             masks = masks[:, 0, :, :]  # A.K.A. masks.squeeze(dim=1)
 
+        # Merge multi-classes into one mask per image
         mask = masks[0].type(torch.uint8)  # 1->water
         for i, m in enumerate(masks[1:], start=2):
             mask += m * i  # 2->sky, 3->more...
@@ -215,14 +227,12 @@ def writing_worker(wQ, args):
         imgs_path = os.path.join(os.path.abspath(args.target), "imgs")
         masks_path = os.path.join(os.path.abspath(args.target), "masks")
         if not os.path.exists(imgs_path):
-            os.makedirs(imgs_path)
-            logging.warning(f"Creating directory: {imgs_path}...")
+            os.makedirs(imgs_path)  # Make sure the writing path is valid
+            logging.warning(f"Output directory created: {imgs_path}.")
         if not os.path.exists(masks_path):
-            os.makedirs(masks_path)
-            logging.warning(f"Creating directory: {masks_path}...")
-        Image.open(os.path.join(os.path.abspath(args.source), name)).resize(
-            args.output_size  # WxH
-        ).save(
+            os.makedirs(masks_path)  # Make sure the writing path is valid
+            logging.warning(f"Output directory created: {masks_path}.")
+        image_raw.resize(args.output_size).save(  # WxH
             os.path.join(imgs_path, f"{name}.png"), quality=100  # In case of jpg
         )  # Resize and save image
         mask.save(
@@ -303,51 +313,82 @@ if __name__ == "__main__":
             pbar.update(1)
     logging.info(f"Preparation done.")
 
-    batch_count = 0
     bottleneck_count_I = bottleneck_count_O = 0
     bottleneck_threshold = 3  # Max bottleneck_count before warning
     with tqdm(total=len(ids)) as pbar:
         pbar.set_description("Processing")
 
         done_count = 0
-        while done_count < len(ids):
-            names = []  # File name
+        exit = 0  # Loading worker exit counter
+        while True:
+            raw = []  # [(file_name, raw_PIL_Image), ...]
 
+            # Load a batch
             batched_input = []
-            for i in range(args.batch_size):
-                if lQ.empty() and batch_count > 0:
+            while True:
+                # Get input data
+                if lQ.empty() and done_count > 0:
                     if bottleneck_count_I > bottleneck_threshold:
                         logging.warning(
                             f"May consider to increase --num-workers I _ for better GPU utilization."
                         )
                     bottleneck_count_I += 1
                 input_dict = lQ.get(timeout=60)  # 60s loading timeout
-                for x in input_dict.keys():
-                    if torch.is_tensor(input_dict[x]):
-                        input_dict[x] = input_dict[x].to(device)
 
-                names.append(input_dict["name"])
-                del input_dict["name"]
-                batched_input.append(input_dict)
-                done_count += 1
+                if len(input_dict) == 0:  # If it is an empty dict
+                    exit += 1  # Then it means a loading worker exited
+                    if exit == args.num_workers[0]:  # If no more data is coming
+                        break
+                else:
+                    # Move to GPU
+                    for x in input_dict.keys():
+                        if torch.is_tensor(input_dict[x]):
+                            input_dict[x] = input_dict[x].to(device)
 
-            batched_output = sam(batched_input, multimask_output=args.multimask)
+                    # Pre-process
+                    # Pass through necessary things
+                    raw.append((input_dict["name"], input_dict["raw"]))
+                    del input_dict["name"]
+                    del input_dict["raw"]
 
-            for i, output_dict in enumerate(batched_output):
-                output_dict["name"] = names[i]
+                    batched_input.append(input_dict)
+                    if len(batched_input) == args.batch_size:  # If a batch is ready
+                        break
 
-                for x in output_dict.keys():
-                    if torch.is_tensor(output_dict[x]):
-                        output_dict[x] = output_dict[x].to("cpu")
-                if wQ.full():
-                    if bottleneck_count_O > bottleneck_threshold:
-                        logging.warning(
-                            f"May consider to increase --num-workers _ O for better GPU utilization."
-                        )
-                    bottleneck_count_O += 1
-                wQ.put(output_dict, timeout=60)  # 60s writing timeout
+            if len(batched_input):  # If input is not empty
+                # Inference
+                batched_output = sam(batched_input, multimask_output=args.multimask)
 
-            pbar.update(len(batched_output))
-            batch_count += 1
+                # Unpack a batch
+                for i, output_dict in enumerate(batched_output):
+                    # Post-process
+                    # Pass through necessary things
+                    output_dict["name"], output_dict["raw"] = raw[i]
+
+                    # Move to CPU
+                    for x in output_dict.keys():
+                        if torch.is_tensor(output_dict[x]):
+                            output_dict[x] = output_dict[x].to("cpu")
+
+                    # Send output data
+                    if wQ.full():
+                        if bottleneck_count_O > bottleneck_threshold:
+                            logging.warning(
+                                f"May consider to increase --num-workers _ O for better GPU utilization."
+                            )
+                        bottleneck_count_O += 1
+                    wQ.put(output_dict, timeout=60)  # 60s writing timeout
+
+            pbar.update(len(batched_input))
+            done_count += len(batched_input)
+            if exit == args.num_workers[0]:  # If no more data is coming
+                pbar.update(len(ids) - done_count)  # Forced set progress to 100%
+                break
 
         logging.info(f"{done_count} done! Exiting...")
+        for i in range(args.num_workers[1]):  # Inform writing workers to exit
+            wQ.put({}, timeout=60)  # 60s writing timeout
+        for i in lW:  # Waiting for loading workers to exit
+            i.join()
+        for i in wW:  # Waiting for writing workers to exit
+            i.join()
