@@ -109,7 +109,9 @@ You can run [save_onnx.py](https://github.com/Chenghao-Tan/DDRNet/blob/master/sa
 
 Check **# For debug** tag in both [save_onnx.py](https://github.com/Chenghao-Tan/DDRNet/blob/master/save_onnx.py) and [models/extra.py](https://github.com/Chenghao-Tan/DDRNet/blob/master/models/extra.py) for how to export the obstacle detection debug version.
 
-With **net.pre_process.enable(True)**&**net.post_process.enable(True)**, the exported model can be used in [Boat-Obstacle-Avoidance](https://github.com/Chenghao-Tan/Boat-Obstacle-Avoidance).
+You can convert the **ONNX** to **blob** [here](https://blobconverter.luxonis.com/), to use it in [Boat-Obstacle-Avoidance](https://github.com/Chenghao-Tan/Boat-Obstacle-Avoidance). (**Complete steps: .pth->.onnx->.blob**)
+
+Useful information:
 - Model's IO:
   - input->Image ("rgb"), Depth map ("depth")
   - output->Flattened grids info ("out")
