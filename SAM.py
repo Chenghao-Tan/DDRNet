@@ -185,6 +185,25 @@ def loading_worker(lQ, ids, transform, args):
     lQ.put({})  # Put an empty dict
 
 
+def visualize(image, mask):
+    mask = np.array(mask)
+    top = Image.new("RGBA", image.size)
+
+    colors = {
+        0: (255, 0, 0, 128),  # Red
+        1: (0, 255, 0, 128),  # Green
+        2: (0, 0, 255, 128),  # Blue
+    }
+
+    for y in range(mask.shape[0]):
+        for x in range(mask.shape[1]):
+            value = mask[y, x]
+            if value in colors:
+                top.putpixel((x, y), colors[value])
+
+    return Image.alpha_composite(image.convert("RGBA"), top)
+
+
 def writing_worker(wQ, args):
     while True:
         output_dict = wQ.get()
@@ -210,6 +229,8 @@ def writing_worker(wQ, args):
         image_raw.save(
             os.path.join(imgs_path, f"{name}.png"), quality=100  # In case of jpg
         )  # Save image
+        if False:  # Debug output
+            mask = visualize(image_raw, mask)
         mask.save(
             os.path.join(masks_path, f"{name}.png"), quality=100  # In case of jpg
         )  # Save mask
