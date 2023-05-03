@@ -2,6 +2,7 @@
 
 /checkpoints/*
 /wandb/*
+.vscode
 
 INTERRUPTED.pth
 BEST.pth

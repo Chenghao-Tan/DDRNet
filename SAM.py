@@ -193,34 +193,9 @@ def writing_worker(wQ, args):
 
         name = output_dict["name"]
         image_raw = output_dict["raw"]
-        masks = output_dict["masks"]
-        scores = output_dict["iou_predictions"]
+        mask = output_dict["mask"]
 
-        # Select the best masks (for multimask feature)
-        if masks.shape[1] > 1:  # A.K.A. args.multimask==True
-            masks = masks[
-                torch.arange(masks.shape[0]), scores.argmax(dim=1)
-            ]  # Select masks with the highest scores
-        else:
-            masks = masks[:, 0, :, :]  # A.K.A. masks.squeeze(dim=1)
-
-        # Merge multi-classes into one mask per image
-        mask = masks[0].type(torch.uint8)  # 1->water
-        for i, m in enumerate(masks[1:], start=2):
-            mask += m * i  # 2->sky, 3->more...
-        mask[mask > len(masks)] = 4  # Overlap defaults to 4 (unknown)
-
-        # Sometimes the prompt point(s) happen to be on the obstacles instead of water/sky/...
-        # It's also why you should set annotation level carefully.
-        threshold = 0.25  # Proportion of water&sky&... should be greater than threshold
-        if ((mask > 0) & (mask != 4)).sum() / (
-            mask.shape[0] * mask.shape[1]
-        ) < threshold:
-            logging.warning(
-                f"Jumped one image ({name}) due to poor annotation quality."
-            )
-            continue
-
+        image_raw = image_raw.resize(args.output_size)  # WxH
         mask = tf.ToPILImage()(mask)
         mask = mask.resize(args.output_size, resample=Image.NEAREST)  # WxH
 
@@ -232,12 +207,11 @@ def writing_worker(wQ, args):
         if not os.path.exists(masks_path):
             os.makedirs(masks_path)  # Make sure the writing path is valid
             logging.warning(f"Output directory created: {masks_path}.")
-        image_raw.resize(args.output_size).save(  # WxH
+        image_raw.save(
             os.path.join(imgs_path, f"{name}.png"), quality=100  # In case of jpg
-        )  # Resize and save image
+        )  # Save image
         mask.save(
-            os.path.join(masks_path, f"{name}.png"),
-            quality=100,  # In case of jpg
+            os.path.join(masks_path, f"{name}.png"), quality=100  # In case of jpg
         )  # Save mask
 
 
@@ -255,7 +229,7 @@ if __name__ == "__main__":
         Output Path:          {os.path.abspath(args.target)}
         Inference Batch Size: {args.batch_size}
         IO Workers:           {args.num_workers[0]}I{args.num_workers[1]}O
-        Annotation Level:     {args.annotation_level}->{"water"+"&sky" if args.annotation_level==2 else ""}
+        Annotation Level:     {args.annotation_level}->{"water"+("&sky" if args.annotation_level==2 else "")}
         Output Size:          {args.output_size}
         Multimask:            {args.multimask}
         Inference Device:     {device}
@@ -355,6 +329,7 @@ if __name__ == "__main__":
                     if len(batched_input) == args.batch_size:  # If a batch is ready
                         break
 
+            saved_count = len(batched_input)
             if len(batched_input):  # If input is not empty
                 # Inference
                 batched_output = sam(batched_input, multimask_output=args.multimask)
@@ -362,8 +337,39 @@ if __name__ == "__main__":
                 # Unpack a batch
                 for i, output_dict in enumerate(batched_output):
                     # Post-process
-                    # Pass through necessary things
-                    output_dict["name"], output_dict["raw"] = raw[i]
+                    # Select the best masks (for multimask feature)
+                    masks = output_dict["masks"]
+                    scores = output_dict["iou_predictions"]
+                    if masks.shape[1] > 1:  # A.K.A. args.multimask==True
+                        masks = masks[
+                            torch.arange(masks.shape[0]), scores.argmax(dim=1)
+                        ]  # Select masks with the highest scores
+                    else:
+                        masks = masks[:, 0, :, :]  # A.K.A. masks.squeeze(dim=1)
+
+                    # Post-process
+                    # Merge multi-classes into one mask per image
+                    mask = masks[0].type(torch.uint8)  # 1->water
+                    for j, m in enumerate(masks[1:], start=2):
+                        mask += m * j  # 2->sky, 3->more...
+                    mask[mask > len(masks)] = 4  # Overlap defaults to 4 (unknown)
+
+                    # Post-process
+                    # Sometimes the prompt point(s) happen to be on the obstacles instead of water/sky/...
+                    # It's also why you should set annotation level carefully.
+                    threshold = 0.25  # Proportion of water&sky&... should be greater than threshold
+                    if ((mask > 0) & (mask != 4)).sum() / (
+                        mask.shape[0] * mask.shape[1]
+                    ) < threshold:
+                        saved_count -= 1
+                        logging.warning(
+                            f"Jumped one image ({raw[i][0]}) due to poor annotation quality."
+                        )
+                        continue
+
+                    # Post-process
+                    # Rebuild output dict
+                    output_dict = {"name": raw[i][0], "raw": raw[i][1], "mask": mask}
 
                     # Move to CPU
                     for x in output_dict.keys():
@@ -379,8 +385,8 @@ if __name__ == "__main__":
                         bottleneck_count_O += 1
                     wQ.put(output_dict, timeout=60)  # 60s writing timeout
 
-            pbar.update(len(batched_input))
-            done_count += len(batched_input)
+            pbar.update(saved_count)
+            done_count += saved_count
             if exit == args.num_workers[0]:  # If no more data is coming
                 pbar.update(len(ids) - done_count)  # Forced set progress to 100%
                 break
