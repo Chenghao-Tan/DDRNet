@@ -431,8 +431,8 @@ if __name__ == "__main__":
             logging.info(f"{done_count} done! Exiting...")
             for i in range(args.num_workers[1]):  # Inform writing workers to exit
                 wQ.put({}, timeout=60)  # 60s writing timeout
-    except Exception as e:
-        logging.error(e)
+    except:
+        logging.exception(f"An error occured:")
         try:
             for i in range(args.num_workers[1]):  # Try to let writing workers finish
                 wQ.put({}, timeout=60)  # 60s writing timeout
