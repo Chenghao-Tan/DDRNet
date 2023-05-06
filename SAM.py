@@ -92,7 +92,7 @@ def get_args():
         nargs=2,
         default=(640, 360),
         type=int,
-        help="Size of the output images and masks (WxH)",
+        help="Size of the output images and masks (WxH) (0 0 = unchanged)",
         metavar=("W", "H"),
         dest="output_size",
     )
@@ -222,9 +222,10 @@ def writing_worker(wQ, args):
         image_raw = output_dict["raw"]
         mask = output_dict["mask"]
 
-        image_raw = image_raw.resize(args.output_size)  # WxH
         mask = tf.ToPILImage()(mask)
-        mask = mask.resize(args.output_size, resample=Image.NEAREST)  # WxH
+        if args.output_size[0] and args.output_size[1]:
+            image_raw = image_raw.resize(args.output_size)  # WxH
+            mask = mask.resize(args.output_size, resample=Image.NEAREST)  # WxH
 
         imgs_path = os.path.join(os.path.abspath(args.target), "imgs")
         masks_path = os.path.join(os.path.abspath(args.target), "masks")
@@ -234,9 +235,10 @@ def writing_worker(wQ, args):
         if not os.path.exists(masks_path):
             os.makedirs(masks_path)  # Make sure the writing path is valid
             logging.warning(f"Output directory created: {masks_path}.")
-        image_raw.save(
-            os.path.join(imgs_path, f"{name}.png"), quality=100  # In case of jpg
-        )  # Save image
+        if not args.visualize:  # No image_raw in debug output
+            image_raw.save(
+                os.path.join(imgs_path, f"{name}.png"), quality=100  # In case of jpg
+            )  # Save image
         if args.visualize:  # Debug output
             mask = visualize(image_raw, mask)
         mask.save(
@@ -259,7 +261,7 @@ if __name__ == "__main__":
         Inference Batch Size: {args.batch_size}
         IO Workers:           {args.num_workers[0]}I{args.num_workers[1]}O
         Annotation Level:     {args.annotation_level}->{"water"+("&sky" if args.annotation_level==2 else "")}
-        Output Size:          {args.output_size}
+        Output Size:          {args.output_size if args.output_size[0] and args.output_size[1] else "Unchanged"}
         Multimask:            {args.multimask}
         Visualize:            {args.visualize}
         Inference Device:     {device}
@@ -273,7 +275,7 @@ if __name__ == "__main__":
 
     logging.info(f"Scanning {args.source}...")
     ids = []
-    for item in tqdm(os.listdir(args.source)):
+    for item in tqdm(os.listdir(args.source), disable=None):
         id = os.path.join(os.path.abspath(args.source), item)
         if not os.path.isfile(id):  # Non-recursive
             continue
@@ -296,7 +298,7 @@ if __name__ == "__main__":
     if len(ids) % args.num_workers[0] > 0:  # A.K.A. math.ceil()
         id_slice += 1
 
-    with tqdm(total=sum(args.num_workers)) as pbar:
+    with tqdm(total=sum(args.num_workers), disable=None) as pbar:
         for i in range(args.num_workers[0]):  # Start loading workers
             lW.append(
                 Process(
@@ -321,7 +323,7 @@ if __name__ == "__main__":
     try:
         bottleneck_count_I = bottleneck_count_O = 0
         bottleneck_threshold = 3  # Max bottleneck_count before warning
-        with tqdm(total=len(ids)) as pbar:
+        with tqdm(total=len(ids), disable=None) as pbar:
             pbar.set_description("Processing")
 
             done_count = 0
@@ -423,9 +425,13 @@ if __name__ == "__main__":
 
                 pbar.update(saved_count)
                 done_count += saved_count
+                if pbar.disable:
+                    logging.info(f"Processing: {round(done_count/len(ids)*100,1)}%")
                 if exit == args.num_workers[0]:  # If no more data is coming
                     pbar.update(len(ids) - done_count)  # Forced set progress to 100%
                     pbar.close()  # Maintain the order of log output
+                    if pbar.disable:
+                        logging.info(f"Processing: 100.0%")
                     break
 
             logging.info(f"{done_count} done! Exiting...")

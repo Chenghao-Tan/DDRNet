@@ -106,8 +106,9 @@ def train_net(
     for epoch in range(epochs):
         net.train()
         epoch_loss = 0
+        done_count = 0
         with tqdm(
-            total=n_train, desc=f"Epoch {epoch + 1}/{epochs}", unit="img"
+            total=n_train, desc=f"Epoch {epoch + 1}/{epochs}", unit="img", disable=None
         ) as pbar:
             for batch in train_loader:
                 images = batch["image"]
@@ -131,7 +132,7 @@ def train_net(
                     ignore_area = True
                     if ignore_area:
                         masks_pred = torch.where(
-                            ignore_masks.byte(),
+                            ignore_masks.bool(),
                             torch.zeros_like(masks_pred),
                             masks_pred,
                         )
@@ -147,11 +148,20 @@ def train_net(
                 scheduler.step()  # step every batch here actually
 
                 pbar.update(images.shape[0])
+                done_count += images.shape[0]
+                if pbar.disable:
+                    logging.info(
+                        f"Epoch {epoch + 1}/{epochs}: {round(done_count/n_train*100,1)}%"
+                    )
                 global_step += 1
                 epoch_loss += loss.item()
                 if experiment is not None:
                     experiment.log(
-                        {"train loss": loss.item(), "step": global_step, "epoch": epoch}
+                        {
+                            "train loss": loss.item(),
+                            "step": global_step,
+                            "epoch": epoch + 1,
+                        }
                     )
                 pbar.set_postfix(**{"loss (batch)": loss.item()})
 
@@ -169,6 +179,7 @@ def train_net(
                             value.grad.data.cpu()
                         )
 
+                    logging.info(f"Evaluating...")
                     val_pre, val_rec, val_miou = evaluate(net, val_loader, device)
 
                     logging.info(
@@ -201,7 +212,7 @@ def train_net(
                                     ),
                                 },
                                 "step": global_step,
-                                "epoch": epoch,
+                                "epoch": epoch + 1,
                                 **histograms,
                             }
                         )
@@ -216,6 +227,9 @@ def train_net(
                             os.remove(best_file)  # Remove other best saves
                         best_file = f"{dir_checkpoint}BEST_mIoU{best}.pth"
                         logging.info(f"Best(mIoU{best}) pth saved!")
+
+            if pbar.disable:
+                logging.info(f"Epoch {epoch + 1}/{epochs}: 100%")
 
         if save_checkpoint:
             Path(dir_checkpoint).mkdir(parents=True, exist_ok=True)

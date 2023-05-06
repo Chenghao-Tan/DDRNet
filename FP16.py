@@ -20,6 +20,7 @@ def evaluate(net, dataloader, device):
         desc="Validation round",
         unit="batch",
         leave=False,
+        disable=None,
     ):
         image, true_masks = batch["image"], batch["mask"]
         # move images and labels to correct device and type
@@ -43,7 +44,7 @@ def evaluate(net, dataloader, device):
             ignore_area = True
             if ignore_area:
                 masks_pred = torch.where(
-                    ignore_masks.byte(), torch.zeros_like(masks_pred), masks_pred
+                    ignore_masks.bool(), torch.zeros_like(masks_pred), masks_pred
                 )
 
             # compute the Precision and the Recall

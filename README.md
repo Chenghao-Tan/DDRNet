@@ -7,7 +7,7 @@
 
 
 ## Overview
-This is a custom training framework supporting **DDRNet and UNet(deprecated).** It is used to train the water segmentation AI model required by [Boat-Obstacle-Avoidance](https://github.com/Chenghao-Tan/Boat-Obstacle-Avoidance). (Prepare your own dataset, train a new model, export the model in ONNX format, then use [Luxonis blobconverter](http://blobconverter.luxonis.com/) to convert the ONNX to blob, which is required by the scripts.)
+This is a custom training framework supporting **DDRNet and UNet(deprecated).** It is used to train the AI model required by [Boat-Obstacle-Avoidance](https://github.com/Chenghao-Tan/Boat-Obstacle-Avoidance). (Prepare your own dataset, train a new model, export the model in ONNX format, then use [Luxonis blobconverter](http://blobconverter.luxonis.com/) to convert the ONNX to blob, which is required by the scripts.)
 
 The built-in models are modified and **use MaSTr1325 format dataset**. See **Data format**.
 
@@ -28,7 +28,7 @@ pip install -r requirements.txt
 
 
 ## Use SAM (optional)
-You can use SAM (Segment-Anything-Model) to generate your unique training dataset automatically. This step will significantly improve the performance of the model in specific areas. You are also welcome to submit your dataset to the community for building better models in the future.
+You can use SAM (Segment-Anything-Model) to generate your unique dataset automatically. This step will significantly improve the performance of the model in specific areas. You are also welcome to submit your dataset to the community for building better models in the future.
 
 ```bash
 git submodule update --init --recursive
@@ -61,7 +61,7 @@ options:
   -a LEVEL, --annotation-level LEVEL
                         1->water, 2->water&sky
   -o W H, --output-size W H
-                        Size of the output images and masks (WxH)
+                        Size of the output images and masks (WxH) (0 0 = unchanged)
   --no-multimask        Generate a single mask instead of picking the best one
   --visualize           Visualize the output mask (for debug)
 ```
@@ -114,6 +114,7 @@ You can convert the **ONNX** to **blob** [here](https://blobconverter.luxonis.co
 Useful information:
 - Model's IO:
   - input->Image ("rgb"), Depth map ("depth")
+  - no detection input->Image ("rgb")
   - output->Flattened grids info ("out")
   - debug output->Flattened grids info ("out"), Filtered depth map ("debug")
   - no detection output->confidence map ("out")
@@ -123,7 +124,6 @@ Useful information:
 
 
 ## Other tools
-- [test_onnx.py](https://github.com/Chenghao-Tan/DDRNet/blob/master/test_onnx.py) is for testing the exported onnx using onnxruntime. The default image input is `"./input.png"` and the depth map input is simulated with ones.
 - [flops.py](https://github.com/Chenghao-Tan/DDRNet/blob/master/flops.py) is for getting the model's number of parameters and estimated computational complexity.
 
 

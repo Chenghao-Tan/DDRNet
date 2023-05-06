@@ -1,6 +1,6 @@
 import logging
 from os import listdir
-from os.path import splitext
+from os.path import isfile, join, splitext
 from pathlib import Path
 
 import albumentations as A
@@ -20,7 +20,7 @@ class BasicDataset(Dataset):
         self.ids = [
             splitext(file)[0]
             for file in listdir(images_dir)
-            if not file.startswith(".")
+            if isfile(join(images_dir, file)) and not file.startswith(".")
         ]
         if not self.ids:
             raise RuntimeError(
@@ -63,7 +63,7 @@ class BasicDataset(Dataset):
         data_transforms = A.Compose(
             [
                 # A.Resize(height, width),
-                A.SafeRotate(limit=[5, 15], p=0.5),
+                A.SafeRotate(limit=[5, 15], p=0.5),  # type: ignore
                 A.Flip(),
                 A.GridDistortion(p=0.5),
                 A.ColorJitter(p=0.5),

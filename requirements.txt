@@ -7,3 +7,6 @@ wandb
 onnxruntime
 albumentations
 thop
+pywebio
+pywebio-battery
+blobconverter
