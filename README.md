@@ -17,6 +17,13 @@ You can export onnx file for [Luxonis blobconverter](http://blobconverter.luxoni
 - Computational complexity: **4.1G** (automatically generated value, may be extremely inaccurate)
 
 
+## GUI
+A web-based GUI is provided. Complete the preparation steps in **Prepare** and **Use SAM**, then enjoy! (You'll need Internet connection for the page to load from public CDN.)
+```bash
+python webui.py
+```
+
+
 ## Prepare
 *Note: Use Python 3.8 or newer*
 
