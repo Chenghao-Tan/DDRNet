@@ -603,24 +603,20 @@ def main():
 # Do some settings before open
 def with_settings(open=main):
     # Page title
-    session.set_env(title="Model Workbench", auto_scroll_bottom=True)
+    session.set_env(title="Model Workbench", auto_scroll_bottom=False)
     # Auto dark mode
-    session.run_js(
-        """
-        if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
-            document.body.style.backgroundColor = '#1c1c1c';
-            document.body.style.color = '#eeeeee';
-            const footer = document.querySelector("footer");
-            footer.style.backgroundColor = '#1c1c1c';
-        }
-    """
-    )
+    if session.eval_js(
+        "(window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches)"
+    ):
+        pywebio.config(theme="dark")
     # Then open
     open()
 
 
 if __name__ == "__main__":
     try:
-        pywebio.start_server(with_settings, port=0, auto_open_webbrowser=True)
+        pywebio.start_server(
+            with_settings, port=0, auto_open_webbrowser=True, cdn=False
+        )
     except KeyboardInterrupt:
         print("Exiting...")

@@ -18,7 +18,7 @@ You can export onnx file for [Luxonis blobconverter](http://blobconverter.luxoni
 
 
 ## GUI
-A web-based GUI is provided. Complete the preparation steps in **Prepare** and **Use SAM**, then enjoy! (You'll need Internet connection for the page to load from public CDN.)
+A web-based GUI is provided. Complete the preparation steps in **Prepare** and **Use SAM**, then enjoy!
 ```bash
 python webui.py
 ```
