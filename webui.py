@@ -456,7 +456,9 @@ def onnx():
             grid_width=int(args["width"]) // int(args["grid_num_w"]),  # type: ignore
             grid_threshold=args["threshold"],  # type: ignore
         )
-    output.put_markdown(f"Successfully exported. Target ONNX: {onnx_path}")
+    output.put_markdown(
+        f"Successfully exported. Target ONNX: {os.path.abspath(onnx_path)}"
+    )
 
     # Next step
     output.put_markdown("## Convert to BLOB next?")
@@ -569,7 +571,9 @@ def blob():
 
     blob_path = os.path.join(args["output_dir"], blob_name)  # type: ignore
     if blobconverter.is_valid_blob(blob_path):
-        output.put_markdown(f"Successfully converted. Target BLOB: {blob_path}")
+        output.put_markdown(
+            f"Successfully converted. Target BLOB: {os.path.abspath(blob_path)}"
+        )
 
         # Next step
         output.put_markdown("## Seems that it's all done!")
