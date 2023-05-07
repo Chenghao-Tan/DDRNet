@@ -2,7 +2,7 @@ import torch
 import torch.nn.functional as F
 from tqdm import tqdm
 
-from utils.dice_score import compute_pre_rec_miou, dice_coeff, multiclass_dice_coeff
+from utils.dice_score import compute_pre_rec_miou
 
 
 def evaluate(net, dataloader, device):
@@ -25,11 +25,9 @@ def evaluate(net, dataloader, device):
         # move images and labels to correct device and type
         image = image.to(device=device, dtype=torch.float32)
         true_masks = true_masks.to(device=device)
-        ignore_masks = (
-            F.one_hot(true_masks).permute(0, 3, 1, 2)[:, 4, :, :].unsqueeze(dim=1)
-        )
-        true_masks = F.one_hot(true_masks).permute(0, 3, 1, 2)[:, 0, :, :]
-        true_masks = true_masks.unsqueeze(dim=1)
+        one_hot_masks = F.one_hot(true_masks, num_classes=5).permute(0, 3, 1, 2)
+        ignore_masks = one_hot_masks[:, 4, :, :].unsqueeze(dim=1)
+        true_masks = one_hot_masks[:, 0, :, :].unsqueeze(dim=1)
 
         with torch.no_grad():
             # predict the mask

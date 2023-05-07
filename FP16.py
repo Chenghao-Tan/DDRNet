@@ -26,11 +26,10 @@ def evaluate(net, dataloader, device):
         # move images and labels to correct device and type
         image = image.to(device=device, dtype=torch.float16)  # FP16
         true_masks = true_masks.to(device=device)
-        ignore_masks = (
-            F.one_hot(true_masks).permute(0, 3, 1, 2)[:, 4, :, :].unsqueeze(dim=1)
-        )
-        true_masks = F.one_hot(true_masks).permute(0, 3, 1, 2)[:, 0, :, :]
-        true_masks = true_masks.unsqueeze(dim=1).half()  # FP16
+        one_hot_masks = F.one_hot(true_masks, num_classes=5).permute(0, 3, 1, 2)
+        ignore_masks = one_hot_masks[:, 4, :, :].unsqueeze(dim=1)
+        true_masks = one_hot_masks[:, 0, :, :].unsqueeze(dim=1)
+        true_masks = true_masks.half()  # FP16
 
         with torch.no_grad():
             # predict the mask
