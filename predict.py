@@ -58,7 +58,7 @@ def predict_onnx(model, input, output_dir, mask=None, confidence=None):
     input_shape = inputs[0].shape[2:4]
     image = np.array(Image.open(input).resize((input_shape[1], input_shape[0])))
     image = image.transpose(2, 0, 1)  # hwc->chw
-    image = (image - image.min()) / (image.max() - image.min())
+    # image = (image - image.min()) / (image.max() - image.min())
     image = np.expand_dims(image, 0)  # batch dim
     rgb = image.astype(np.float32)
     if len(inputs) == 2:
@@ -70,11 +70,11 @@ def predict_onnx(model, input, output_dir, mask=None, confidence=None):
         print(pred)
     else:  # len(inputs) == 1
         pred = net.run(None, {"rgb": rgb})[0]
+        if confidence is not None:
+            pred = (pred > confidence).astype(np.uint8)
         output = os.path.join(
             output_dir, (os.path.splitext(os.path.split(input)[-1])[0] + "_pred.png")
         )
-        if confidence is not None:
-            pred = (pred > confidence).astype(np.uint8)
         Image.fromarray((pred * 255).squeeze().astype(np.uint8)).save(output)
         print(f"{input} -> {output}")
         if mask is not None:  # MaSTr1325 format
