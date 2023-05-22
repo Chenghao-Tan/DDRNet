@@ -113,82 +113,84 @@ def get_args():
 
 
 def loading_worker(lQ, ids, transform, args):
-    for id in ids:
-        name = os.path.basename(id)
-        if not os.path.exists(id):
-            logging.error(f"{id} does not exist!")
-            continue  # Just skip it
-        image_raw = Image.open(id)
-        image_size = (image_raw.size[1], image_raw.size[0])  # H x W
+    try:
+        for id in ids:
+            name = os.path.basename(id)
+            if not os.path.exists(id):
+                logging.error(f"{id} does not exist!")
+                continue  # Just skip it
+            image_raw = Image.open(id)
+            image_size = (image_raw.size[1], image_raw.size[0])  # H x W
 
-        image = np.array(image_raw)
-        image = transform.apply_image(image)  # Recommend this over *_torch version
-        image = torch.as_tensor(image)
-        image = image.permute(2, 0, 1).contiguous()
+            image = np.array(image_raw)
+            image = transform.apply_image(image)  # Recommend this over *_torch version
+            image = torch.as_tensor(image)
+            image = image.permute(2, 0, 1).contiguous()
 
-        prompt_points = torch.tensor(  # Point(s) for water
-            [
+            prompt_points = torch.tensor(  # Point(s) for water
                 [
                     [
-                        image_size[1] // 2,
-                        int(image_size[0] * 0.9),
-                    ],  # 10% above bottom, horizontal middle
-                    [
-                        image_size[1] // 4,
-                        int(image_size[0] * 0.9),
-                    ],  # 10% above bottom, 25% from left
-                    [
-                        image_size[1] // 4 * 3,
-                        int(image_size[0] * 0.9),
-                    ],  # 10% above bottom, 25% from right
-                ]
-            ]
-        )
-        if args.annotation_level == 2:  # Add point(s) for sky
-            prompt_points = torch.cat(
-                [
-                    prompt_points,
-                    torch.tensor(
                         [
-                            [
-                                [
-                                    image_size[1] // 2,
-                                    int(image_size[0] * 0.1),
-                                ],  # 10% below top, horizontal middle
-                                [
-                                    image_size[1] // 4,
-                                    int(image_size[0] * 0.1),
-                                ],  # 10% below top, 25% from left
-                                [
-                                    image_size[1] // 4 * 3,
-                                    int(image_size[0] * 0.1),
-                                ],  # 10% below top, 25% from right
-                            ]
-                        ]
-                    ),
+                            image_size[1] // 2,
+                            int(image_size[0] * 0.9),
+                        ],  # 10% above bottom, horizontal middle
+                        [
+                            image_size[1] // 4,
+                            int(image_size[0] * 0.9),
+                        ],  # 10% above bottom, 25% from left
+                        [
+                            image_size[1] // 4 * 3,
+                            int(image_size[0] * 0.9),
+                        ],  # 10% above bottom, 25% from right
+                    ]
                 ]
             )
-        prompt_points = transform.apply_coords_torch(
-            prompt_points, original_size=image_size
-        )
+            if args.annotation_level == 2:  # Add point(s) for sky
+                prompt_points = torch.cat(
+                    [
+                        prompt_points,
+                        torch.tensor(
+                            [
+                                [
+                                    [
+                                        image_size[1] // 2,
+                                        int(image_size[0] * 0.1),
+                                    ],  # 10% below top, horizontal middle
+                                    [
+                                        image_size[1] // 4,
+                                        int(image_size[0] * 0.1),
+                                    ],  # 10% below top, 25% from left
+                                    [
+                                        image_size[1] // 4 * 3,
+                                        int(image_size[0] * 0.1),
+                                    ],  # 10% below top, 25% from right
+                                ]
+                            ]
+                        ),
+                    ]
+                )
+            prompt_points = transform.apply_coords_torch(
+                prompt_points, original_size=image_size
+            )
 
-        prompt_label = torch.tensor([[1, 1, 1]])  # Label(s) for water
-        if args.annotation_level == 2:  # Add label(s) for sky
-            prompt_label = torch.cat([prompt_label, torch.tensor([[1, 1, 1]])])
+            prompt_label = torch.tensor([[1, 1, 1]])  # Label(s) for water
+            if args.annotation_level == 2:  # Add label(s) for sky
+                prompt_label = torch.cat([prompt_label, torch.tensor([[1, 1, 1]])])
 
-        lQ.put(
-            {
-                "image": image,
-                "original_size": image_size,
-                "point_coords": prompt_points,
-                "point_labels": prompt_label,
-                "name": name,
-                "raw": image_raw,
-            },
-        )
-
-    # Before exiting
-    lQ.put({})  # Put an empty dict
+            lQ.put(
+                {
+                    "image": image,
+                    "original_size": image_size,
+                    "point_coords": prompt_points,
+                    "point_labels": prompt_label,
+                    "name": name,
+                    "raw": image_raw,
+                },
+            )
+    except:
+        logging.exception(f"An error occured in a loading worker:")
+    finally:
+        lQ.put({})  # Inform the main process of its exiting
 
 
 def visualize(image, mask):
@@ -213,37 +215,41 @@ def visualize(image, mask):
 
 
 def writing_worker(wQ, args):
-    while True:
-        output_dict = wQ.get()
-        if len(output_dict) == 0:  # Signal for exiting
-            break  # Exit
+    try:
+        while True:
+            output_dict = wQ.get()
+            if len(output_dict) == 0:  # Signal for exiting
+                break  # Exit
 
-        name = output_dict["name"]
-        image_raw = output_dict["raw"]
-        mask = output_dict["mask"]
+            name = output_dict["name"]
+            image_raw = output_dict["raw"]
+            mask = output_dict["mask"]
 
-        mask = tf.ToPILImage()(mask)
-        if args.output_size[0] and args.output_size[1]:
-            image_raw = image_raw.resize(args.output_size)  # WxH
-            mask = mask.resize(args.output_size, resample=Image.NEAREST)  # WxH
+            mask = tf.ToPILImage()(mask)
+            if args.output_size[0] and args.output_size[1]:
+                image_raw = image_raw.resize(args.output_size)  # WxH
+                mask = mask.resize(args.output_size, resample=Image.NEAREST)  # WxH
 
-        imgs_path = os.path.join(os.path.abspath(args.target), "imgs")
-        masks_path = os.path.join(os.path.abspath(args.target), "masks")
-        if not os.path.exists(imgs_path):
-            os.makedirs(imgs_path)  # Make sure the writing path is valid
-            logging.warning(f"Output directory created: {imgs_path}.")
-        if not os.path.exists(masks_path):
-            os.makedirs(masks_path)  # Make sure the writing path is valid
-            logging.warning(f"Output directory created: {masks_path}.")
-        if not args.visualize:  # No image_raw in debug output
-            image_raw.save(
-                os.path.join(imgs_path, f"{name}.png"), quality=100  # In case of jpg
-            )  # Save image
-        if args.visualize:  # Debug output
-            mask = visualize(image_raw, mask)
-        mask.save(
-            os.path.join(masks_path, f"{name}.png"), quality=100  # In case of jpg
-        )  # Save mask
+            imgs_path = os.path.join(os.path.abspath(args.target), "imgs")
+            masks_path = os.path.join(os.path.abspath(args.target), "masks")
+            if not os.path.exists(imgs_path):
+                os.makedirs(imgs_path)  # Make sure the writing path is valid
+                logging.warning(f"Output directory created: {imgs_path}.")
+            if not os.path.exists(masks_path):
+                os.makedirs(masks_path)  # Make sure the writing path is valid
+                logging.warning(f"Output directory created: {masks_path}.")
+            if not args.visualize:  # No image_raw in debug output
+                image_raw.save(
+                    os.path.join(imgs_path, f"{name}.png"),
+                    quality=100,  # In case of jpg
+                )  # Save image
+            if args.visualize:  # Debug output
+                mask = visualize(image_raw, mask)
+            mask.save(
+                os.path.join(masks_path, f"{name}.png"), quality=100  # In case of jpg
+            )  # Save mask
+    except:
+        logging.exception(f"An error occured in a writing worker:")
 
 
 if __name__ == "__main__":
@@ -300,23 +306,23 @@ if __name__ == "__main__":
 
     with tqdm(total=sum(args.num_workers), disable=None) as pbar:
         for i in range(args.num_workers[0]):  # Start loading workers
-            lW.append(
-                Process(
-                    target=loading_worker,
-                    args=(
-                        lQ,
-                        ids[id_slice * i : id_slice * (i + 1)],
-                        resize_transform,
-                        args,
-                    ),
-                    daemon=True,
-                )
+            worker = Process(
+                target=loading_worker,
+                args=(
+                    lQ,
+                    ids[id_slice * i : id_slice * (i + 1)],
+                    resize_transform,
+                    args,
+                ),
+                daemon=True,
             )
-            lW[i].start()
+            worker.start()
+            lW.append(worker)
             pbar.update(1)
         for i in range(args.num_workers[1]):  # Start writing workers
-            wW.append(Process(target=writing_worker, args=(wQ, args)))
-            wW[i].start()
+            worker = Process(target=writing_worker, args=(wQ, args))
+            worker.start()
+            wW.append(worker)
             pbar.update(1)
     logging.info(f"Preparation done.")
 
@@ -435,16 +441,16 @@ if __name__ == "__main__":
                     break
 
             logging.info(f"{done_count} done! Exiting...")
-            for i in range(args.num_workers[1]):  # Inform writing workers to exit
-                wQ.put({}, timeout=60)  # 60s writing timeout
     except:
         logging.exception(f"An error occured:")
+    finally:
         try:
-            for i in range(args.num_workers[1]):  # Try to let writing workers finish
+            for i in wW:  # Try to let writing workers finish
                 wQ.put({}, timeout=60)  # 60s writing timeout
         except:
             for i in wW:  # Terminate writing workers
-                i.terminate()
-    finally:
-        for i in wW:  # Wait for writing workers to exit
-            i.join()
+                if i.is_alive():
+                    i.terminate()
+        finally:
+            for i in wW:  # Wait for writing workers to exit
+                i.join()
