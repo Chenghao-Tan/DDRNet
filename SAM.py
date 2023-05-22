@@ -1,7 +1,7 @@
 import argparse
 import logging
 import os
-from multiprocessing import Process, Queue
+from multiprocessing import Process, Queue, Value
 
 import numpy as np
 import torch
@@ -112,9 +112,16 @@ def get_args():
     return parser.parse_args()
 
 
-def loading_worker(lQ, ids, transform, args):
+def loading_worker(lQ, index, ids, transform, args):
     try:
-        for id in ids:
+        while True:
+            with index.get_lock():
+                if index.value >= len(ids):  # If all done
+                    break
+                else:
+                    id = ids[index.value]  # Read current id
+                    index.value += 1  # Set index to the next one
+
             name = os.path.basename(id)
             if not os.path.exists(id):
                 logging.error(f"{id} does not exist!")
@@ -300,20 +307,13 @@ if __name__ == "__main__":
     lW = []
     wW = []
 
-    id_slice = len(ids) // args.num_workers[0]
-    if len(ids) % args.num_workers[0] > 0:  # A.K.A. math.ceil()
-        id_slice += 1
+    loading_index = Value("Q", 0, lock=True)  # Current loading index
 
     with tqdm(total=sum(args.num_workers), disable=None) as pbar:
         for i in range(args.num_workers[0]):  # Start loading workers
             worker = Process(
                 target=loading_worker,
-                args=(
-                    lQ,
-                    ids[id_slice * i : id_slice * (i + 1)],
-                    resize_transform,
-                    args,
-                ),
+                args=(lQ, loading_index, ids, resize_transform, args),
                 daemon=True,
             )
             worker.start()
