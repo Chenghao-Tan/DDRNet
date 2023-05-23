@@ -12,11 +12,11 @@ from torch.utils.data import Dataset
 
 
 class BasicDataset(Dataset):
-    def __init__(self, images_dir: str, masks_dir: str, scale: float = 1.0):
+    def __init__(self, images_dir: str, masks_dir: str, resize: tuple[int, int]):
         self.images_dir = Path(images_dir)
         self.masks_dir = Path(masks_dir)
-        assert 0 < scale <= 1, "Scale must be between 0 and 1"
-        self.scale = scale
+        assert resize[0] > 0 and resize[1] > 0, "W and H must both be >0!"
+        self.resize = resize
         self.ids = [
             splitext(file)[0]
             for file in listdir(images_dir)
@@ -33,9 +33,10 @@ class BasicDataset(Dataset):
 
     @staticmethod
     def preprocess(pil_img, scale, is_mask=True):
-        w, h = pil_img.size
-        newW, newH = int(scale * w), int(scale * h)
-        pil_img = pil_img.resize((newW, newH), resample=Image.BICUBIC)
+        if not is_mask:
+            pil_img = pil_img.resize(scale, resample=Image.BICUBIC)
+        else:
+            pil_img = pil_img.resize(scale, resample=Image.NEAREST)
         img_ndarray = np.asarray(pil_img)
 
         if not is_mask:
@@ -86,8 +87,8 @@ class BasicDataset(Dataset):
         mask = self.load(mask_file[0])
         img = self.load(img_file[0])
 
-        img = self.preprocess(img, self.scale, is_mask=False)
-        mask = self.preprocess(mask, self.scale)
+        img = self.preprocess(img, self.resize, is_mask=False)
+        mask = self.preprocess(mask, self.resize, is_mask=True)
 
         result = self.transform(img.astype("float32"), mask.astype("float32"))
 

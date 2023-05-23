@@ -2,7 +2,6 @@ import argparse
 import logging
 import math
 import os
-import sys
 from pathlib import Path
 
 import torch
@@ -19,24 +18,27 @@ from utils.data_loading import BasicDataset
 from utils.dice_score import dice_loss
 from utils.unified_focal_loss import AsymmetricUnifiedFocalLoss
 
+# Don't modify these if you don't know what you are doing
 dir_img = "./data/imgs/"
 dir_mask = "./data/masks/"
 dir_checkpoint = "./checkpoints/"
+load_imagenet_checkpoint = "./DDRNet23s_imagenet.pth"
+save_epoch_checkpoints = False
 
 
 def train_net(
     net,
     device,
-    epochs: int = 5,
-    batch_size: int = 1,
+    epochs: int = 127,
+    batch_size: int = 8,
     learning_rate: float = 3e-4,
     val_percent: float = 0.1,
-    save_checkpoint: bool = False,
-    img_scale: float = 1.0,
+    img_resize: tuple[int, int] = (640, 360),
     amp: bool = False,
+    save_checkpoint: bool = False,
 ):
     # 1. Create dataset
-    dataset = BasicDataset(dir_img, dir_mask, img_scale)
+    dataset = BasicDataset(dir_img, dir_mask, img_resize)
 
     # 2. Split into train / validation partitions
     n_val = int(len(dataset) * val_percent)
@@ -61,8 +63,7 @@ def train_net(
                 batch_size=batch_size,
                 learning_rate=learning_rate,
                 val_percent=val_percent,
-                save_checkpoint=save_checkpoint,
-                img_scale=img_scale,
+                img_resize=img_resize,
                 amp=amp,
             )
         )
@@ -70,14 +71,13 @@ def train_net(
     logging.info(
         f"""Starting training:
         Epochs:          {epochs}
-        Batch size:      {batch_size}
-        Learning rate:   {learning_rate}
-        Training size:   {n_train}
-        Validation size: {n_val}
-        Checkpoints:     {save_checkpoint}
-        Device:          {device.type}
-        Images scaling:  {img_scale}
+        Batch Size:      {batch_size}
+        Learning Rate:   {learning_rate}
+        Training Size:   {n_train}
+        Validation Size: {n_val}
+        Resize:          {img_resize}
         Mixed Precision: {amp}
+        Device:          {device.type}
     """
     )
 
@@ -272,19 +272,22 @@ def get_args():
         help="Load model from a .pth file",
     )
     parser.add_argument(
-        "--scale",
-        "-s",
-        type=float,
-        default=1.0,
-        help="Downscaling factor of the images",
-    )
-    parser.add_argument(
         "--validation",
         "-v",
         dest="val",
         type=float,
         default=10.0,
         help="Percent of the data that is used as validation (0-100)",
+    )
+    parser.add_argument(
+        "--resize",
+        "-r",
+        nargs=2,
+        default=(640, 360),
+        type=int,
+        help="Resize the input images and masks all to the same size (WxH)",
+        metavar=("W", "H"),
+        dest="resize",
     )
     parser.add_argument(
         "--amp", action="store_true", default=False, help="Use mixed precision"
@@ -301,7 +304,7 @@ if __name__ == "__main__":
 
     # Change here to adapt to your data
     # net = UNet(n_channels=3, n_classes=1)
-    net = DDRNet(n_channels=3, n_classes=1, pretrained="./DDRNet23s_imagenet.pth")
+    net = DDRNet(n_channels=3, n_classes=1, pretrained=load_imagenet_checkpoint)
 
     logging.info(
         f"Network:\n"
@@ -318,15 +321,15 @@ if __name__ == "__main__":
     try:
         train_net(
             net=net,
+            device=device,
             epochs=args.epochs,
             batch_size=args.batch_size,
             learning_rate=args.lr,
-            device=device,
-            img_scale=args.scale,
             val_percent=args.val / 100,
+            img_resize=args.resize,
             amp=args.amp,
+            save_checkpoint=save_epoch_checkpoints,
         )
     except KeyboardInterrupt:
         torch.save(net.state_dict(), "./INTERRUPTED.pth")
         logging.info("Saved interrupt")
-        sys.exit(0)

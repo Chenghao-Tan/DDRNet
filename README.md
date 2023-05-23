@@ -82,28 +82,26 @@ options:
 ## Training
 ```console
 > python train.py -h
-usage: train.py [-h] [--epochs E] [--batch-size B] [--learning-rate LR]
-                [--load LOAD] [--scale SCALE] [--validation VAL] [--amp]
+usage: train.py [-h] [--epochs E] [--batch-size B] [--learning-rate LR] [--load LOAD] [--validation VAL] [--resize W H] [--amp]
 
 Train the UNet on images and target masks
 
-optional arguments:
+options:
   -h, --help            show this help message and exit
   --epochs E, -e E      Number of epochs
   --batch-size B, -b B  Batch size
   --learning-rate LR, -l LR
                         Learning rate
   --load LOAD, -f LOAD  Load model from a .pth file
-  --scale SCALE, -s SCALE
-                        Downscaling factor of the images
   --validation VAL, -v VAL
                         Percent of the data that is used as validation (0-100)
+  --resize W H, -r W H  Resize the input images and masks all to the same size (WxH)
   --amp                 Use mixed precision
 ```
 
 ### Tips:
 - Recommend to set `--epochs` to 1,3,7,15,31,63...
-- You can use `--scale` to scale the image while keeping the aspect ratio, but it's recommended to modify [data_loading.py](https://github.com/Chenghao-Tan/DDRNet/blob/master/utils/data_loading.py) directly. (Uncomment **A.Resize(height, width)**).
+- By default, training will be performed at 640*360 resolution.
 - `--amp` is not recommended as it may drastically reduce precision.
 
 Trainable parameters will be saved to the `checkpoints` folder as .pth. Only the best one will be saved by default.
