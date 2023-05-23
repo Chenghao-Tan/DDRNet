@@ -332,7 +332,8 @@ if __name__ == "__main__":
         with tqdm(total=len(ids), disable=None) as pbar:
             pbar.set_description("Processing")
 
-            done_count = 0
+            done_count = 0  # Number of the saved
+            bad_count = 0  # Number of the loaded but not saved
             exit = 0  # Loading worker exit counter
             while True:
                 raw = []  # [(file_name, raw_PIL_Image), ...]
@@ -370,6 +371,7 @@ if __name__ == "__main__":
                             break
 
                 saved_count = len(batched_input)
+                jumped_count = 0
                 if len(batched_input):  # If input is not empty
                     # Inference
                     batched_output = sam(batched_input, multimask_output=args.multimask)
@@ -402,6 +404,7 @@ if __name__ == "__main__":
                             mask.shape[0] * mask.shape[1]
                         ) < threshold:
                             saved_count -= 1
+                            jumped_count += 1
                             logging.warning(
                                 f"Jumped one image ({raw[i][0]}) due to poor annotation quality."
                             )
@@ -429,18 +432,22 @@ if __name__ == "__main__":
                             bottleneck_count_O += 1
                         wQ.put(output_dict, timeout=60)  # 60s writing timeout
 
-                pbar.update(saved_count)
+                pbar.update(saved_count + jumped_count)
                 done_count += saved_count
+                bad_count += jumped_count
                 if pbar.disable:
-                    logging.info(f"Processing: {round(done_count/len(ids)*100,1)}%")
+                    logging.info(
+                        f"Processing: {round((done_count+bad_count)/len(ids)*100,1)}%"
+                    )
                 if exit == args.num_workers[0]:  # If no more data is coming
-                    pbar.update(len(ids) - done_count)  # Forced set progress to 100%
-                    pbar.close()  # Maintain the order of log output
+                    pbar.update(
+                        len(ids) - (done_count + bad_count)
+                    )  # Forced set progress to 100%
                     if pbar.disable:
                         logging.info(f"Processing: 100.0%")
                     break
 
-            logging.info(f"{done_count} done! Exiting...")
+        logging.info(f"{done_count} done! Exiting...")
     except:
         logging.exception(f"An error occured:")
     finally:
