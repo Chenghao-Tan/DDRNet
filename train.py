@@ -32,6 +32,7 @@ def train_net(
     epochs: int = 127,
     batch_size: int = 8,
     learning_rate: float = 3e-4,
+    load: str | None = None,
     val_percent: float = 0.1,
     img_resize: tuple[int, int] = (640, 360),
     amp: bool = False,
@@ -62,6 +63,7 @@ def train_net(
                 epochs=epochs,
                 batch_size=batch_size,
                 learning_rate=learning_rate,
+                load=load,
                 val_percent=val_percent,
                 img_resize=img_resize,
                 amp=amp,
@@ -73,6 +75,7 @@ def train_net(
         Epochs:          {epochs}
         Batch Size:      {batch_size}
         Learning Rate:   {learning_rate}
+        Load Checkpoint: {load}
         Training Size:   {n_train}
         Validation Size: {n_val}
         Resize:          {img_resize}
@@ -101,24 +104,46 @@ def train_net(
     global_step = 0
 
     # 5. Begin training
+    if load:
+        logging.info(f"Evaluating loaded checkpoint...")
+        val_pre, val_rec, val_miou = evaluate(net, val_loader, device)
+        logging.info(
+            "\n Checkpoint Precision: {:4f} \n Checkpoint Recall: {:.4f} \n Checkpoint mIoU: {:.4f}".format(
+                val_pre, val_rec, val_miou
+            )
+        )
+        if experiment is not None:
+            experiment.log(
+                {
+                    "step": global_step,
+                    "epoch": 0,
+                    "validation Precision": val_pre,
+                    "validation Recall": val_rec,
+                    "validation mIoU": val_miou,
+                }
+            )
+
     best = 0
     best_file = None
     for epoch in range(epochs):
         net.train()
-        epoch_loss = 0
         done_count = 0
         with tqdm(
             total=n_train, desc=f"Epoch {epoch + 1}/{epochs}", unit="img", disable=None
         ) as pbar:
             for batch in train_loader:
+                global_step += 1
+                if experiment is not None:
+                    experiment.log(
+                        {
+                            "step": global_step,
+                            "epoch": epoch + 1,
+                            "learning rate": optimizer.param_groups[0]["lr"],
+                        }
+                    )
+
                 images = batch["image"]
                 true_masks = batch["mask"]
-
-                assert images.shape[1] == net.n_channels, (
-                    f"Network has been defined with {net.n_channels} input channels, "
-                    f"but loaded images have {images.shape[1]} channels. Please check that "
-                    "the images are loaded correctly."
-                )
 
                 images = images.to(device=device, dtype=torch.float32)
                 true_masks = true_masks.to(device=device)
@@ -147,34 +172,36 @@ def train_net(
                 grad_scaler.update()
                 scheduler.step()  # step every batch here actually
 
+                pbar.set_postfix(**{"loss (batch)": loss.item()})
                 pbar.update(images.shape[0])
                 done_count += images.shape[0]
                 if pbar.disable:
                     logging.info(
                         f"Epoch {epoch + 1}/{epochs}: {round(done_count/n_train*100,1)}%"
                     )
-                global_step += 1
-                epoch_loss += loss.item()
                 if experiment is not None:
                     experiment.log(
                         {
-                            "train loss": loss.item(),
                             "step": global_step,
                             "epoch": epoch + 1,
+                            "train loss": loss.item(),
                         }
                     )
-                pbar.set_postfix(**{"loss (batch)": loss.item()})
 
                 # Evaluation round
                 division_step = n_train // (
                     2 * batch_size
                 )  # the frequency of evaluation
-                if division_step > 0 and global_step % division_step == 0:
+                if not division_step > 0:
+                    logging.error(
+                        f"Dataset size must be >{math.ceil(2 * batch_size/(1-val_percent))}, or there's no evaluation!"
+                    )
+                    continue
+                if global_step % division_step == 0:
                     histograms = {}
                     for tag, value in net.named_parameters():
                         tag = tag.replace("/", ".")
                         histograms[f"Weights/{tag}"] = wandb.Histogram(value.data.cpu())
-
                         histograms[f"Gradients/{tag}"] = wandb.Histogram(
                             value.grad.data.cpu()
                         )
@@ -190,13 +217,13 @@ def train_net(
                     if experiment is not None:
                         experiment.log(
                             {
-                                "learning rate": optimizer.param_groups[0]["lr"],
+                                "step": global_step,
+                                "epoch": epoch + 1,
                                 "validation Precision": val_pre,
                                 "validation Recall": val_rec,
                                 "validation mIoU": val_miou,
                                 "images": wandb.Image(images[0].cpu()),
                                 "masks": {
-                                    "true": wandb.Image(true_masks[0].float().cpu()),
                                     "pred": wandb.Image(
                                         torch.softmax(masks_pred, dim=1)
                                         .argmax(dim=1)[0]
@@ -210,9 +237,8 @@ def train_net(
                                             > 0.5
                                         ).float()
                                     ),
+                                    "true": wandb.Image(true_masks[0].float().cpu()),
                                 },
-                                "step": global_step,
-                                "epoch": epoch + 1,
                                 **histograms,
                             }
                         )
@@ -229,7 +255,7 @@ def train_net(
                         logging.info(f"Best(mIoU{best}) pth saved!")
 
             if pbar.disable:
-                logging.info(f"Epoch {epoch + 1}/{epochs}: 100%")
+                logging.info(f"Epoch {epoch + 1}/{epochs}: 100.0%")
 
         if save_checkpoint:
             Path(dir_checkpoint).mkdir(parents=True, exist_ok=True)
@@ -325,6 +351,7 @@ if __name__ == "__main__":
             epochs=args.epochs,
             batch_size=args.batch_size,
             learning_rate=args.lr,
+            load=args.load,
             val_percent=args.val / 100,
             img_resize=args.resize,
             amp=args.amp,
