@@ -400,9 +400,15 @@ if __name__ == "__main__":
                         # Sometimes the prompt point(s) happen to be on the obstacles instead of water/sky/...
                         # It's also why you should set annotation level carefully.
                         threshold = 0.25  # Proportion of water&sky&... should be greater than threshold
-                        if ((mask > 0) & (mask != 4)).sum() / (
-                            mask.shape[0] * mask.shape[1]
-                        ) < threshold:
+                        threshold_water = 0.25  # Proportion of water in labels should be greater than threshold
+                        # End of configuration
+                        pixel_count = mask.shape[0] * mask.shape[1]
+                        label_count = ((mask > 0) & (mask != 4)).sum()
+                        water_count = (mask == 1).sum()
+                        if (
+                            label_count / pixel_count < threshold
+                            or water_count / label_count < threshold_water
+                        ):
                             saved_count -= 1
                             jumped_count += 1
                             logging.warning(
