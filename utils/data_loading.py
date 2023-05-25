@@ -12,11 +12,18 @@ from torch.utils.data import Dataset
 
 
 class BasicDataset(Dataset):
-    def __init__(self, images_dir: str, masks_dir: str, resize: tuple[int, int]):
+    def __init__(
+        self,
+        images_dir: str,
+        masks_dir: str,
+        resize: tuple[int, int],
+        augment: bool = True,
+    ):
         self.images_dir = Path(images_dir)
         self.masks_dir = Path(masks_dir)
         assert resize[0] > 0 and resize[1] > 0, "W and H must both be >0!"
         self.resize = resize
+        self.augment = augment
         self.ids = [
             splitext(file)[0]
             for file in listdir(images_dir)
@@ -59,13 +66,11 @@ class BasicDataset(Dataset):
         else:
             return Image.open(filename)  # return (w, h)
 
-    @staticmethod
-    def transform(img, mask):
+    def transform(self, img, mask):
         data_transforms = A.Compose(
             [
-                # A.Resize(height, width),
                 A.SafeRotate(limit=[5, 15], p=0.5),  # type: ignore
-                A.Flip(),
+                A.Flip(p=0.5),
                 A.GridDistortion(p=0.5),
                 A.ColorJitter(p=0.5),
                 A.RandomSunFlare(p=0.2),
@@ -76,6 +81,8 @@ class BasicDataset(Dataset):
                 A.MotionBlur(p=0.2),
                 ToTensorV2(),
             ]
+            if self.augment
+            else [ToTensorV2()]
         )
         return data_transforms(image=img, mask=mask)
 
@@ -96,3 +103,7 @@ class BasicDataset(Dataset):
             "image": result["image"].float().contiguous(),
             "mask": result["mask"].long().contiguous(),
         }
+
+    def enable_augment(self, enable: bool = True):
+        "Augmentation Switch"
+        self.augment = enable

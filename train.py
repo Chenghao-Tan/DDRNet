@@ -24,6 +24,7 @@ dir_mask = "./data/masks/"
 dir_checkpoint = "./checkpoints/"
 load_imagenet_checkpoint = "./DDRNet23s_imagenet.pth"
 save_epoch_checkpoints = False
+augment_when_evaluating = False
 
 
 def train_net(
@@ -47,6 +48,9 @@ def train_net(
     train_set, val_set = random_split(
         dataset, [n_train, n_val], generator=torch.Generator().manual_seed(0)
     )
+    assert (
+        n_train // (2 * batch_size) > 0
+    ), f"Dataset size must be >{math.ceil(2 * batch_size/(1-val_percent))}!"
 
     # 3. Create data loaders
     loader_args = dict(
@@ -106,7 +110,9 @@ def train_net(
     # 5. Begin training
     if load:
         logging.info(f"Evaluating loaded checkpoint...")
+        dataset.enable_augment(augment_when_evaluating)
         val_pre, val_rec, val_miou = evaluate(net, val_loader, device)
+        dataset.enable_augment(True)
         logging.info(
             "\n Checkpoint Precision: {:4f} \n Checkpoint Recall: {:.4f} \n Checkpoint mIoU: {:.4f}".format(
                 val_pre, val_rec, val_miou
@@ -192,11 +198,6 @@ def train_net(
                 division_step = n_train // (
                     2 * batch_size
                 )  # the frequency of evaluation
-                if not division_step > 0:
-                    logging.error(
-                        f"Dataset size must be >{math.ceil(2 * batch_size/(1-val_percent))}, or there's no evaluation!"
-                    )
-                    continue
                 if global_step % division_step == 0:
                     histograms = {}
                     for tag, value in net.named_parameters():
@@ -207,7 +208,9 @@ def train_net(
                         )
 
                     logging.info(f"Evaluating...")
+                    dataset.enable_augment(augment_when_evaluating)
                     val_pre, val_rec, val_miou = evaluate(net, val_loader, device)
+                    dataset.enable_augment(True)
 
                     logging.info(
                         "\n Validation Precision: {:4f} \n Validation Recall: {:.4f} \n Validation mIoU: {:.4f}".format(
